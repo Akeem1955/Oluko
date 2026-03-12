@@ -1,0 +1,66 @@
+# ==========================================
+# SECRETS & SENSITIVE FILES
+# ==========================================
+.env
+.env.*
+!.env.example
+**/application.properties
+**/application-*.properties
+**/application.yml
+**/application-*.yml
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+*-wallet-key.json
+
+# ==========================================
+# BACKEND (Java / Spring Boot)
+# ==========================================
+Backend/target/
+Backend/.mvn/wrapper/maven-wrapper.jar
+Backend/*.iml
+Backend/.idea/
+Backend/.run/
+Backend/.settings/
+Backend/.classpath
+Backend/.project
+Backend/.factorypath
+Backend/.springBeans
+Backend/.sts4-cache
+Backend/.apt_generated
+
+# ==========================================
+# PYTHON AGENT
+# ==========================================
+Backend/neuronflow-agent/.venv/
+Backend/neuronflow-agent/__pycache__/
+Backend/neuronflow-agent/*.pyc
+Backend/neuronflow-agent/.mypy_cache/
+Backend/neuronflow-agent/.ruff_cache/
+
+# ==========================================
+# FRONTEND (React / Vite)
+# ==========================================
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+Frontend/*.local
+
+# ==========================================
+# OS & EDITOR FILES
+# ==========================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# ==========================================
+# LOGS
+# ==========================================
+*.log
+npm-debug.log*

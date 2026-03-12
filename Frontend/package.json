@@ -1,0 +1,43 @@
+{
+  "name": "neuronflow",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@livekit/components-react": "^2.9.20",
+    "@livekit/components-styles": "^1.2.0",
+    "@tanstack/react-query": "^5.90.20",
+    "@types/dompurify": "^3.0.5",
+    "axios": "^1.13.3",
+    "clsx": "^2.1.0",
+    "dompurify": "^3.3.1",
+    "framer-motion": "^11.18.0",
+    "js-cookie": "^3.0.5",
+    "livekit-client": "^2.17.2",
+    "lucide-react": "^0.469.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-live": "^4.1.8",
+    "react-router-dom": "^6.22.0",
+    "tailwind-merge": "^2.2.1",
+    "zod": "^3.25.76",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/js-cookie": "^3.0.6",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "tailwindcss": "^4.1.18",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4"
+  }
+}
