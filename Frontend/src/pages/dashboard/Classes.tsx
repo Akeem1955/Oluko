@@ -260,15 +260,19 @@ export default function Classes() {
                   transition={{ delay: i * 0.1 }}
                 >
                   <Link
-                    to="/teach-me/class/units"
-                    className="block group"
-                    onClick={() => {
+                    to={course.status === 'READY' ? "/teach-me/class/units" : "#"}
+                    className={`block group ${course.status !== 'READY' ? 'cursor-not-allowed opacity-80' : ''}`}
+                    onClick={(e) => {
+                      if (course.status !== 'READY') {
+                        e.preventDefault();
+                        return;
+                      }
                       localStorage.setItem("currentCourseId", course.id.toString());
                     }}
                   >
                     <Card
                       variant="interactive"
-                      className="p-5 bg-white dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-soft hover:shadow-lg transition-shadow relative overflow-hidden"
+                      className={`p-5 bg-white dark:bg-card-dark border border-gray-100 dark:border-gray-800 shadow-soft relative overflow-hidden ${course.status === 'READY' ? 'hover:shadow-lg transition-shadow' : ''}`}
                     >
                       {/* Mode Indicator */}
                       <div className="absolute top-0 right-0 p-2 opacity-5">
@@ -288,7 +292,11 @@ export default function Classes() {
 
                       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-4 relative z-10">
                         <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            course.status === 'FAILED' ? 'bg-red-500' :
+                            course.status === 'READY' ? 'bg-green-500' :
+                            'bg-yellow-500'
+                          }`} />
                           {course.status}
                         </span>
                         <span>•</span>
@@ -299,7 +307,10 @@ export default function Classes() {
                         <span>{course.targetLanguage}</span>
                       </div>
 
-                      <Button className="w-full relative z-10">
+                      <Button 
+                        className="w-full relative z-10"
+                        disabled={course.status !== 'READY'}
+                      >
                         <Play className="w-4 h-4 fill-current" /> Start Learning
                       </Button>
                     </Card>
