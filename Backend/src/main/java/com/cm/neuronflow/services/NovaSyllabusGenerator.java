@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.*;
 public class NovaSyllabusGenerator {
 
     private final BedrockRuntimeClient bedrockClient;
-    private static final String NOVA_LITE_MODEL_ID = "us.amazon.nova-lite-v1:0";
+    private static final String NOVA_LITE_MODEL_ID = "us.amazon.nova-2-lite-v1:0";
 
     public NovaSyllabusGenerator(BedrockRuntimeClient bedrockClient) {
         this.bedrockClient = bedrockClient;

@@ -7,11 +7,10 @@ export const quizService = {
    * and returns 200 OK with { message }.
    */
   generateQuiz: async (
-    lessonId: string,
     file: File,
     startPage: number,
     endPage?: number,
-  ): Promise<{ message: string }> => {
+  ): Promise<{ message: string; lessonId: string }> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('startPage', startPage.toString());
@@ -19,8 +18,8 @@ export const quizService = {
       formData.append('endPage', endPage.toString());
     }
 
-    const response = await apiClient.post<{ message: string }>(
-      `/api/v1/lessons/${lessonId}/generate-quiz`,
+    const response = await apiClient.post<{ message: string; lessonId: string }>(
+      '/api/v1/lessons/generate-quiz-session',
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );

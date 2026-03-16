@@ -1,6 +1,6 @@
 
 import apiClient from './apiClient';
-import { Course, Lesson } from '@/lib/types';
+import { Course, CourseProgressResponse, Lesson } from '@/lib/types';
 
 export const classService = {
   // ── Course listing ────────────────────────────────────────────────
@@ -28,6 +28,23 @@ export const classService = {
 
   getCourseLessons: async (courseId: string): Promise<Lesson[]> => {
     const response = await apiClient.get<Lesson[]>(`/api/v1/courses/${courseId}/lessons`);
+    return response.data;
+  },
+
+  getCourseProgress: async (courseId: string): Promise<CourseProgressResponse> => {
+    const response = await apiClient.get<CourseProgressResponse>(
+      `/api/v1/courses/${courseId}/progress`,
+    );
+    return response.data;
+  },
+
+  completeLesson: async (
+    courseId: string,
+    lessonId: string,
+  ): Promise<CourseProgressResponse> => {
+    const response = await apiClient.post<CourseProgressResponse>(
+      `/api/v1/courses/${courseId}/lessons/${lessonId}/complete`,
+    );
     return response.data;
   },
 };

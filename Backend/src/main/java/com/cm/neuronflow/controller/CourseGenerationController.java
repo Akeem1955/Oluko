@@ -6,6 +6,8 @@ import com.cm.neuronflow.internal.domain.Course;
 import com.cm.neuronflow.internal.domain.Lesson;
 import com.cm.neuronflow.internal.domain.enums.LearningMode;
 import com.cm.neuronflow.internal.exceptions.NeuronFlowException;
+import com.cm.neuronflow.internal.repository.LessonRepository;
+import com.cm.neuronflow.services.CourseProgressService;
 import com.cm.neuronflow.services.CourseGenerationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +24,17 @@ import java.util.UUID;
 public class CourseGenerationController {
 
     private final CourseGenerationService courseGenerationService;
+    private final LessonRepository lessonRepository;
+    private final CourseProgressService courseProgressService;
 
-    public CourseGenerationController(CourseGenerationService courseGenerationService) {
+    public CourseGenerationController(
+            CourseGenerationService courseGenerationService,
+            LessonRepository lessonRepository,
+            CourseProgressService courseProgressService
+    ) {
         this.courseGenerationService = courseGenerationService;
+        this.lessonRepository = lessonRepository;
+        this.courseProgressService = courseProgressService;
     }
 
     /**
@@ -101,5 +111,51 @@ public class CourseGenerationController {
     @GetMapping("/{courseId}")
     public ResponseEntity<Course> getCourseById(@PathVariable UUID courseId) {
         return ResponseEntity.ok(courseGenerationService.getCourseById(courseId));
+    }
+
+    /**
+     * 7. Get sequential lesson progress for a course.
+     */
+    @GetMapping("/{courseId}/progress")
+    public ResponseEntity<Map<String, Integer>> getCourseProgress(@PathVariable UUID courseId) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        Course course = courseGenerationService.getCourseById(courseId);
+        courseProgressService.ensureCourseOwnership(userId, course);
+
+        int highestCompletedOrder = courseProgressService.getHighestCompletedOrder(userId, course);
+        return ResponseEntity.ok(Map.of(
+                "highestCompletedOrder", highestCompletedOrder,
+                "nextUnlockedOrder", highestCompletedOrder + 1
+        ));
+    }
+
+    /**
+     * 8. Mark a lesson as completed for sequential unlocking.
+     */
+    @PostMapping("/{courseId}/lessons/{lessonId}/complete")
+    public ResponseEntity<Map<String, Integer>> completeLesson(
+            @PathVariable UUID courseId,
+            @PathVariable UUID lessonId
+    ) {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Course course = courseGenerationService.getCourseById(courseId);
+        courseProgressService.ensureCourseOwnership(userId, course);
+
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new NeuronFlowException("Lesson not found", HttpStatus.NOT_FOUND));
+
+        if (!lesson.getCourse().getId().equals(courseId)) {
+            throw new NeuronFlowException("Lesson does not belong to this course", HttpStatus.BAD_REQUEST);
+        }
+
+        int highestCompletedOrder = courseProgressService
+                .completeLesson(userId, lesson)
+                .getHighestCompletedOrder();
+
+        return ResponseEntity.ok(Map.of(
+                "highestCompletedOrder", highestCompletedOrder,
+                "nextUnlockedOrder", highestCompletedOrder + 1
+        ));
     }
 }

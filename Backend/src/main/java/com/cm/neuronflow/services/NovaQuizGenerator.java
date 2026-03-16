@@ -22,15 +22,26 @@ public class NovaQuizGenerator {
     @CircuitBreaker(name = "bedrockApi")
     public String generateQuizBank(String contextMaterial) {
         String prompt = String.format("""
-            You are an expert examiner. Based strictly on the text below, generate a 'Quiz Bank' containing 3 to 5 challenging questions and their exact answers.
+            You are an expert examiner. Based strictly on the text below, generate a 'Quiz Bank' containing 3 to 5 challenging multiple-choice questions.
             
             TEXT TO TEST:
             %s
             
-            Format the output clearly as:
+            RULES:
+            - Each question must have exactly four options: A, B, C, D.
+            - Exactly one option is correct.
+            - Keep options plausible but only one correct.
+            - Do not include explanations.
+
+            Format each item exactly as:
             Q1: [Question]
-            A1: [Answer]
-            ...
+            A) [Option A]
+            B) [Option B]
+            C) [Option C]
+            D) [Option D]
+            ANSWER: [A|B|C|D]
+
+            Repeat for Q2, Q3, etc.
             """, contextMaterial);
 
         Message message = Message.builder()

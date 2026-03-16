@@ -82,18 +82,49 @@ export interface CourseStatusResponse {
   title?: string;
 }
 
+export interface CourseProgressResponse {
+  highestCompletedOrder: number;
+  nextUnlockedOrder: number;
+}
+
+export interface StudyAnalyticsItem {
+  id: string;
+  type: 'QUIZ' | 'LESSON';
+  lessonTitle: string;
+  masteryScore: number;
+  clarityScore: number;
+  retentionScore: number;
+  quizAccuracy?: number | null;
+  strengths?: string;
+  weakAreas?: string;
+  recommendation?: string;
+  createdAt: string;
+}
+
+export interface StudyAnalyticsOverview {
+  totalSessions: number;
+  quizSessions: number;
+  lessonSessions: number;
+  avgMasteryScore: number;
+  avgQuizAccuracy: number;
+  recentSessions: StudyAnalyticsItem[];
+}
+
 /** Matches backend LiveKit token response: { token, roomName, livekitUrl } */
 export interface LiveKitTokenResponse {
   token: string;
   roomName: string;
   livekitUrl: string;
+  hasResume?: boolean;
+  resumeCompletionPercent?: number;
+  resumeSummary?: string;
 }
 
-export type VisualMode = 'idle' | 'loading' | 'image' | 'canvas' | 'error';
+export type VisualMode = 'idle' | 'loading' | 'image' | 'canvas' | 'quiz' | 'error';
 
 export interface WhiteboardPayload {
   type: 'TOOL_PROCESSING' | 'TOOL_CALL_RESULT' | 'TOOL_ERROR';
-  action?: 'image' | 'canvas';
+  action?: 'image' | 'canvas' | 'quiz' | 'end_session';
   url?: string;
   payload?: string;
   message?: string;

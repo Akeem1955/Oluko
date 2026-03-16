@@ -162,7 +162,7 @@ export default function Dashboard() {
         animate="visible"
         className="max-w-[1440px] w-full mx-auto p-6 lg:p-10 grid grid-cols-1 xl:grid-cols-12 gap-8"
       >
-        <div className="xl:col-span-8 flex flex-col gap-8">
+        <div className="xl:col-span-9 flex flex-col gap-8">
           <motion.section
             variants={itemVariants}
             className="relative overflow-hidden rounded-2xl bg-linear-to-r from-primary-dark to-primary p-8 md:p-10 text-white shadow-lg shadow-primary/20"
@@ -206,13 +206,13 @@ export default function Dashboard() {
 
           <motion.div
             variants={itemVariants}
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6"
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
             {LEARNING_MODES.map((mode) => (
               <div
                 key={mode.id}
                 className={cn(
-                  "group relative flex flex-col bg-white dark:bg-card-dark rounded-2xl p-6",
+                  "group relative flex flex-col bg-white dark:bg-card-dark rounded-2xl p-7",
                   "shadow-soft hover:shadow-lg transition-all duration-300",
                   "border border-transparent overflow-hidden",
                   mode.hoverBorder,
@@ -236,7 +236,7 @@ export default function Dashboard() {
                 <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2">
                   {mode.title}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 flex-1 leading-relaxed">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 flex-1 leading-relaxed line-clamp-3">
                   {mode.description}
                 </p>
                 <Button
@@ -286,10 +286,14 @@ export default function Dashboard() {
               />
             </div>
           </motion.div>
+
         </div>
 
-        <motion.div variants={itemVariants} className="xl:col-span-4">
-          <RecentActivity sessions={recentActivity} className="h-full" />
+        <motion.div variants={itemVariants} className="xl:col-span-3">
+          <RecentActivity
+            sessions={recentActivity}
+            className="max-h-[700px] overflow-y-auto"
+          />
         </motion.div>
       </motion.div>
 

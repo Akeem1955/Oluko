@@ -1,5 +1,7 @@
-import { useParams, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { LessonRoom } from "@/components/lesson/LessonRoom";
+import { useCourseLessons, useCourseProgress } from "@/lib/hooks/useClasses";
 
 /**
  * LessonSession — Now uses LiveKit for real-time voice interaction
@@ -13,10 +15,37 @@ import { LessonRoom } from "@/components/lesson/LessonRoom";
 export function LessonSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { state } = useLocation();
+  const navigate = useNavigate();
   const unit = state?.unit;
 
   // sessionId doubles as lessonId for the LiveKit token fetch
   const lessonId = sessionId || unit?.id;
+
+  const courseId = localStorage.getItem("currentCourseId");
+  const { data: courseLessons = [] } = useCourseLessons(courseId || null);
+  const { data: progress, isLoading: progressLoading } = useCourseProgress(courseId || null);
+
+  useEffect(() => {
+    if (!lessonId || !courseId || courseLessons.length === 0) return;
+
+    if (progressLoading || !progress) return;
+    const highestCompleted = progress.highestCompletedOrder;
+
+    const orderedLessons = [...courseLessons].sort(
+      (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
+    );
+
+    const lessonIndex = orderedLessons.findIndex((lesson) => lesson.id === lessonId);
+    if (lessonIndex < 0) return;
+
+    const selectedLesson = orderedLessons[lessonIndex];
+    if (!selectedLesson) return;
+
+    const lessonOrder = selectedLesson.orderIndex ?? lessonIndex + 1;
+    if (lessonOrder > highestCompleted + 1) {
+      navigate("/teach-me/class/units", { replace: true });
+    }
+  }, [lessonId, courseId, courseLessons, progress, progressLoading, navigate]);
 
   if (!lessonId) {
     return (

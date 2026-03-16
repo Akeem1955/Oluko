@@ -5,6 +5,11 @@ import { WhiteboardPayload } from '@/lib/types';
 import { CanvasRenderer } from './CanvasRenderer';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
+type QuizVisual = {
+  question?: string;
+  options?: Record<string, string>;
+};
+
 /**
  * Interactive Whiteboard component.
  * Lives inside a <LiveKitRoom> and listens for data channel payloads
@@ -13,6 +18,15 @@ import { Loader2, AlertTriangle } from 'lucide-react';
 export function InteractiveWhiteboard() {
   const { visualMode, visualData, loadingText, handlePayload, reset } =
     useWhiteboardStore();
+
+  const parsedQuiz: QuizVisual | null = (() => {
+    if (visualMode !== 'quiz' || !visualData) return null;
+    try {
+      return JSON.parse(visualData) as QuizVisual;
+    } catch {
+      return null;
+    }
+  })();
 
   // Listen for data channel messages from the AI agent
   useDataChannel((msg) => {
@@ -75,6 +89,34 @@ export function InteractiveWhiteboard() {
 
       {visualMode === 'canvas' && (
         <CanvasRenderer codeString={visualData} />
+      )}
+
+      {visualMode === 'quiz' && (
+        <div className="w-full h-full flex items-center justify-center p-4 md:p-6">
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-5 md:p-7 space-y-5">
+            <div className="inline-flex items-center rounded-full bg-primary/10 text-primary text-xs font-semibold px-3 py-1">
+              Concentration Quiz
+            </div>
+
+            <h3 className="text-lg md:text-2xl font-bold text-slate-900 dark:text-white leading-relaxed">
+              {parsedQuiz?.question || 'Quiz question unavailable.'}
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(Object.entries(parsedQuiz?.options || {}) as Array<[string, string]>).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-3"
+                >
+                  <p className="text-sm md:text-base text-slate-700 dark:text-slate-200">
+                    <span className="font-bold mr-2">{key}.</span>
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {visualMode === 'error' && (

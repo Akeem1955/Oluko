@@ -13,34 +13,71 @@ const scope = { React, useState, useEffect, useCallback, useMemo, useRef };
  * - Ensures the component is rendered (not just defined)
  */
 function sanitizeCode(raw: string): string {
-  let code = raw;
+  let code = raw.trim();
 
-  // Remove import lines (LLM often adds them despite instructions)
-  code = code.replace(/^import\s+.*?;\s*$/gm, '');
+  // Remove markdown fences if present
+  code = code
+    .replace(/^```[a-zA-Z]*\s*/g, '')
+    .replace(/```\s*$/g, '');
 
-  // Remove "export default ComponentName;" at the end
-  code = code.replace(/export\s+default\s+\w+\s*;?\s*$/gm, '');
+  // Normalize smart quotes and dashes that occasionally break parsing
+  code = code
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—]/g, '-');
 
-  // If the code defines a const Component = ... but doesn't render it,
-  // find the component name and add a render call at the end.
-  // Match patterns like: const MyComponent = () => { OR function MyComponent() {
-  const constMatch = code.match(/^const\s+([A-Z]\w*)\s*=/m);
-  const funcMatch = code.match(/^function\s+([A-Z]\w*)\s*\(/m);
-  const componentName = constMatch?.[1] || funcMatch?.[1];
+  // Remove import/export lines (LLM often adds them despite instructions)
+  code = code
+    .replace(/^import\s+.*?;\s*$/gm, '')
+    .replace(/^export\s+default\s+\w+\s*;?\s*$/gm, '')
+    .replace(/^export\s+default\s+/gm, '');
+
+  // If model prepends prose, trim everything before first component declaration
+  const firstComponentIndex = (() => {
+    const matches = [
+      code.search(/\bconst\s+[A-Z]\w*\s*=\s*/),
+      code.search(/\bfunction\s+[A-Z]\w*\s*\(/),
+      code.search(/\bclass\s+[A-Z]\w*\s+extends\s+React\.Component/),
+    ].filter((index) => index >= 0);
+    return matches.length > 0 ? Math.min(...matches) : -1;
+  })();
+
+  if (firstComponentIndex > 0) {
+    code = code.slice(firstComponentIndex);
+  }
+
+  // If a render call already exists, keep it and just return normalized code.
+  const hasRenderCall = /\brender\s*\(/.test(code);
+  if (hasRenderCall) {
+    return code.trim();
+  }
+
+  // Find component name to mount
+  const constMatch = code.match(/\bconst\s+([A-Z]\w*)\s*=/);
+  const letMatch = code.match(/\blet\s+([A-Z]\w*)\s*=/);
+  const varMatch = code.match(/\bvar\s+([A-Z]\w*)\s*=/);
+  const funcMatch = code.match(/\bfunction\s+([A-Z]\w*)\s*\(/);
+  const classMatch = code.match(/\bclass\s+([A-Z]\w*)\s+extends\s+React\.Component/);
+  const componentName =
+    constMatch?.[1] ||
+    letMatch?.[1] ||
+    varMatch?.[1] ||
+    funcMatch?.[1] ||
+    classMatch?.[1];
 
   if (componentName) {
-    // Check if the code already ends with a render expression like <ComponentName /> or render(...)
-    const trimmed = code.trimEnd();
-    const hasRender =
-      trimmed.endsWith('/>') ||
-      trimmed.endsWith('>') ||
-      trimmed.endsWith(')');
-
-    // If the last meaningful line is just the closing brace of the component definition, add render
-    if (!hasRender || trimmed.endsWith('};') || trimmed.endsWith('}')) {
-      code = code + `\n\nrender(<${componentName} />);`;
-    }
+    code = `${code}\n\nrender(<${componentName} />);`;
+    return code.trim();
   }
+
+  // JSX-only snippet fallback (e.g. `<div>...</div>`)
+  if (code.startsWith('<')) {
+    code = `render(${code});`;
+    return code.trim();
+  }
+
+  // Last-resort fallback to satisfy noInline requirement.
+  code = `${code}\n\nrender(<div />);`;
 
   return code.trim();
 }

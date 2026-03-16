@@ -48,6 +48,7 @@ public class AuthSecurityConfig {
                         // --- REQUIRED NEURONFLOW BYPASSES ---
                         .requestMatchers(HttpMethod.GET, "/api/v1/media/image/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/internal/lessons/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/internal/lessons/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/internal/tools/**").permitAll()
                         // ------------------------------------
 
@@ -68,10 +69,14 @@ public class AuthSecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173","https://akimy.me" , "http://localhost:8080","https://NeuronFlow.software","https://NeuronFlow-agent.vercel.app"));
+
+        // Use patterns instead of explicit origins
+        configuration.setAllowedOriginPatterns(List.of("*"));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

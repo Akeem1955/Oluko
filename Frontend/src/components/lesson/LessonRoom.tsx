@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   useVoiceAssistant,
   useConnectionState,
+  useDataChannel,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { ConnectionState } from 'livekit-client';
@@ -13,6 +14,8 @@ import { useLivekitToken } from '@/lib/hooks/activity/useLivekitToken';
 import { AgentVisualizer } from './AgentVisualizer';
 import { InteractiveWhiteboard } from './InteractiveWhiteboard';
 import { ConfirmDialog } from '@/components/dialog/ConfirmDialog';
+import { classService } from '@/lib/services/classService';
+import { WhiteboardPayload } from '@/lib/types';
 
 interface LessonRoomProps {
   lessonId: string;
@@ -23,13 +26,46 @@ interface LessonRoomProps {
  * Inner component that has access to the LiveKit room context.
  * Must be rendered inside <LiveKitRoom>.
  */
-function LessonRoomContent({ lessonTitle }: { lessonTitle?: string }) {
+function LessonRoomContent({
+  lessonTitle,
+  onRemoteEndSession,
+  onConnectionLost,
+}: {
+  lessonTitle?: string;
+  onRemoteEndSession: (message?: string) => void;
+  onConnectionLost: () => void;
+}) {
   const voiceAssistant = useVoiceAssistant();
   const connectionState = useConnectionState();
+  const hasConnectedRef = useRef(false);
   const isConnected = connectionState === ConnectionState.Connected;
+
+  useEffect(() => {
+    if (connectionState === ConnectionState.Connected) {
+      hasConnectedRef.current = true;
+      return;
+    }
+
+    if (connectionState === ConnectionState.Disconnected && hasConnectedRef.current) {
+      onConnectionLost();
+    }
+  }, [connectionState, onConnectionLost]);
 
   // The agent is speaking when its state is 'speaking'
   const isSpeaking = voiceAssistant.state === 'speaking';
+
+  useDataChannel((msg) => {
+    try {
+      const payloadStr = new TextDecoder().decode(msg.payload);
+      const data: WhiteboardPayload = JSON.parse(payloadStr);
+
+      if (data.type === 'TOOL_CALL_RESULT' && data.action === 'end_session') {
+        onRemoteEndSession(data.message);
+      }
+    } catch (e) {
+      console.error('Failed to parse session control data message:', e);
+    }
+  });
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row relative overflow-hidden">
@@ -96,17 +132,64 @@ function LessonRoomContent({ lessonTitle }: { lessonTitle?: string }) {
  */
 export function LessonRoom({ lessonId, lessonTitle }: LessonRoomProps) {
   const navigate = useNavigate();
-  const { token, livekitUrl, isLoading, error, fetchToken } = useLivekitToken();
+  const {
+    token,
+    livekitUrl,
+    hasResume,
+    resumeCompletionPercent,
+    resumeSummary,
+    isLoading,
+    error,
+    fetchToken,
+  } = useLivekitToken();
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [remoteEnded, setRemoteEnded] = useState(false);
+  const [sessionDisconnected, setSessionDisconnected] = useState(false);
+  const [roomInstanceKey, setRoomInstanceKey] = useState(0);
 
   useEffect(() => {
     fetchToken(lessonId);
   }, [lessonId, fetchToken]);
 
   const handleBackClick = () => setShowExitDialog(true);
-  const handleConfirmExit = () => {
+  const handleConfirmExit = async () => {
     setShowExitDialog(false);
-    navigate('/classes', { replace: true });
+
+    navigate('/teach-me/class/units', { replace: true });
+  };
+
+  const handleRemoteEndSession = async () => {
+    if (remoteEnded) return;
+    setRemoteEnded(true);
+
+    navigate('/teach-me/class/units', { replace: true });
+
+    const courseId = localStorage.getItem('currentCourseId');
+    if (courseId) {
+      try {
+        await classService.completeLesson(courseId, lessonId);
+      } catch (e) {
+        console.error('Failed to mark lesson completed from remote end:', e);
+      }
+    }
+  };
+
+  const handleConnectionLost = () => {
+    if (remoteEnded) {
+      navigate('/teach-me/class/units', { replace: true });
+      return;
+    }
+    setSessionDisconnected(true);
+  };
+
+  const handleReconnect = async () => {
+    setSessionDisconnected(false);
+    await fetchToken(lessonId);
+    setRoomInstanceKey((prev) => prev + 1);
+  };
+
+  const handleLeaveAfterDisconnect = () => {
+    navigate('/teach-me/class/units', { replace: true });
   };
 
   // Loading state
@@ -117,6 +200,11 @@ export function LessonRoom({ lessonId, lessonTitle }: LessonRoomProps) {
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           <h2 className="text-xl font-bold text-white">Connecting to class...</h2>
           <p className="text-slate-400">Setting up your voice session</p>
+          {hasResume && resumeCompletionPercent > 0 && resumeCompletionPercent < 100 && (
+            <p className="text-xs text-blue-300">
+              Resuming from {resumeCompletionPercent}% completion
+            </p>
+          )}
         </div>
       </div>
     );
@@ -138,6 +226,36 @@ export function LessonRoom({ lessonId, lessonTitle }: LessonRoomProps) {
           >
             Retry
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionDisconnected) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-950">
+        <div className="text-center space-y-4 max-w-md p-8">
+          <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
+            <span className="text-amber-400 text-2xl">!</span>
+          </div>
+          <h2 className="text-xl font-bold text-white">Session Disconnected</h2>
+          <p className="text-slate-400">
+            The live class connection was interrupted. You can reconnect or leave this session.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={handleReconnect}
+              className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Reconnect
+            </button>
+            <button
+              onClick={handleLeaveAfterDisconnect}
+              className="px-6 py-3 border border-slate-600 text-slate-200 rounded-xl font-semibold hover:bg-slate-800 transition-colors"
+            >
+              Leave
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -167,18 +285,34 @@ export function LessonRoom({ lessonId, lessonTitle }: LessonRoomProps) {
         <h1 className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-xs">
           {lessonTitle || 'Live Class'}
         </h1>
-        <div />
+        <div className="text-right">
+          {hasResume && resumeCompletionPercent > 0 && resumeCompletionPercent < 100 && (
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[240px] truncate" title={resumeSummary}>
+              Resume {resumeCompletionPercent}%
+            </p>
+          )}
+        </div>
       </div>
 
       {/* LiveKit Room */}
       <LiveKitRoom
+        key={roomInstanceKey}
         serverUrl={livekitUrl!}
         token={token!}
         connect={true}
         audio={true}
+        onDisconnected={handleConnectionLost}
+        onError={(err) => {
+          console.error('LiveKit room error:', err);
+          handleConnectionLost();
+        }}
         className="flex-1 flex flex-col"
       >
-        <LessonRoomContent lessonTitle={lessonTitle} />
+        <LessonRoomContent
+          lessonTitle={lessonTitle}
+          onRemoteEndSession={handleRemoteEndSession}
+          onConnectionLost={handleConnectionLost}
+        />
       </LiveKitRoom>
     </div>
   );

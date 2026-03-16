@@ -2,6 +2,7 @@ import { lazy, ReactNode } from "react";
 
 const Landing = lazy(() => import("@/pages/home/Landing"));
 const Dashboard = lazy(() => import("@/pages/dashboard/Dashboard"));
+const Analytics = lazy(() => import("@/pages/dashboard/Analytics"));
 const Signup = lazy(() => import("@/pages/auth/Signup"));
 const Login = lazy(() => import("@/pages/auth/Login"));
 const VerifyOtp = lazy(() => import("@/pages/auth/VerifyOtp"));
@@ -96,6 +97,12 @@ export const protectedRoutes: AppRoute[] = [
     element: <Dashboard />,
     requiresAuth: true,
     title: "Dashboard",
+  },
+  {
+    path: "/analytics",
+    element: <Analytics />,
+    requiresAuth: true,
+    title: "Analytics",
   },
   {
     path: "/teach-me/class/units",

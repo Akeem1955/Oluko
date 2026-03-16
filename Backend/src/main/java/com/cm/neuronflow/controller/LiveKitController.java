@@ -2,8 +2,11 @@ package com.cm.neuronflow.controller;
 
 
 import com.cm.neuronflow.internal.domain.Lesson;
+import com.cm.neuronflow.internal.domain.LessonResumeState;
 import com.cm.neuronflow.internal.exceptions.NeuronFlowException;
 import com.cm.neuronflow.internal.repository.LessonRepository;
+import com.cm.neuronflow.services.CourseProgressService;
+import com.cm.neuronflow.services.LessonResumeService;
 import io.livekit.server.AccessToken;
 import io.livekit.server.RoomJoin;
 import io.livekit.server.RoomName;
@@ -21,6 +24,8 @@ import java.util.UUID;
 public class LiveKitController {
 
     private final LessonRepository lessonRepository;
+    private final CourseProgressService courseProgressService;
+    private final LessonResumeService lessonResumeService;
 
     // You will get these from your free LiveKit Cloud account
     @Value("${livekit.api.key}")
@@ -32,12 +37,18 @@ public class LiveKitController {
     @Value("${livekit.url}")
     private String livekitUrl;
 
-    public LiveKitController(LessonRepository lessonRepository) {
+    public LiveKitController(
+            LessonRepository lessonRepository,
+            CourseProgressService courseProgressService,
+            LessonResumeService lessonResumeService
+    ) {
         this.lessonRepository = lessonRepository;
+        this.courseProgressService = courseProgressService;
+        this.lessonResumeService = lessonResumeService;
     }
 
     @GetMapping("/token")
-    public ResponseEntity<Map<String, String>> generateToken(@RequestParam UUID lessonId) {
+    public ResponseEntity<Map<String, Object>> generateToken(@RequestParam UUID lessonId) {
         // 1. Get the current logged-in user
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -45,8 +56,18 @@ public class LiveKitController {
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new NeuronFlowException("Lesson not found", HttpStatus.NOT_FOUND));
 
+        courseProgressService.ensureCourseOwnership(userEmail, lesson.getCourse());
+
+        if (!courseProgressService.isLessonUnlocked(userEmail, lesson)) {
+            throw new NeuronFlowException(
+                "Lesson is locked. Please complete previous lessons first.",
+                HttpStatus.FORBIDDEN
+            );
+        }
+
         // The room name will be the Lesson ID so the Python agent knows exactly which room to join
         String roomName = lesson.getId().toString();
+        LessonResumeState resumeState = lessonResumeService.getByLessonId(lesson.getId()).orElse(null);
 
         // We use the user's email as their unique participant identity
         String participantIdentity = userEmail;
@@ -67,7 +88,13 @@ public class LiveKitController {
             return ResponseEntity.ok(Map.of(
                     "token", jwtToken,
                     "roomName", roomName,
-                    "livekitUrl", livekitUrl
+                    "livekitUrl", livekitUrl,
+                    "hasResume", resumeState != null
+                        && resumeState.getCompletionPercent() != null
+                        && resumeState.getCompletionPercent() > 0
+                        && resumeState.getCompletionPercent() < 100,
+                    "resumeCompletionPercent", resumeState != null ? resumeState.getCompletionPercent() : 0,
+                    "resumeSummary", resumeState != null ? resumeState.getResumeSummary() : ""
             ));
 
         } catch (Exception e) {

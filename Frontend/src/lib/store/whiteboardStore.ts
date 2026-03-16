@@ -33,6 +33,8 @@ export const useWhiteboardStore = create<WhiteboardState>((set) => ({
         set({ visualMode: 'image', visualData: payload.url || '' });
       } else if (payload.action === 'canvas') {
         set({ visualMode: 'canvas', visualData: payload.payload || '' });
+      } else if (payload.action === 'quiz') {
+        set({ visualMode: 'quiz', visualData: payload.payload || '' });
       }
     } else if (payload.type === 'TOOL_ERROR') {
       set({
