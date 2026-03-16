@@ -278,6 +278,15 @@ Opens on `http://localhost:5173`. Sign up, create a class, and start your first 
 
 ---
 
+## Login Credentials (For Judges)
+
+| Field | Value |
+|---|---|
+| **Username** | `oluko.admin@gmail.com` |
+| **Password** | `Oluko@2026` |
+
+---
+
 ## Team
 
 Built for the **Amazon Nova AI Hackathon**.

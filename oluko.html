@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olùkọ́ — Voice-First AI Learning Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e1a;--surface:#111827;--surface2:#1e293b;--border:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--primary:#6366f1;--primary-glow:rgba(99,102,241,.15);--cyan:#06b6d4;--green:#10b981;--amber:#f59e0b;--rose:#f43f5e;--purple:#a855f7}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden}
+.glow-orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:.12;pointer-events:none;z-index:0}
+.glow-orb.blue{width:600px;height:600px;background:var(--primary);top:-200px;right:-100px}
+.glow-orb.cyan{width:500px;height:500px;background:var(--cyan);bottom:10%;left:-150px}
+.glow-orb.purple{width:400px;height:400px;background:var(--purple);top:50%;right:20%}
+.container{max-width:1100px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+/* Hero */
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:80px 24px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:999px;background:var(--primary-glow);border:1px solid rgba(99,102,241,.3);color:var(--primary);font-size:13px;font-weight:600;margin-bottom:24px;letter-spacing:.5px}
+.hero h1{font-size:clamp(3rem,7vw,5.5rem);font-weight:900;line-height:1.05;margin-bottom:20px;background:linear-gradient(135deg,#fff 0%,#c7d2fe 50%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.25rem;color:var(--muted);max-width:700px;margin:0 auto 40px}
+.hero-stats{display:flex;gap:48px;justify-content:center;flex-wrap:wrap}
+.hero-stat{text-align:center}
+.hero-stat .num{font-size:2.5rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-stat .label{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* Sections */
+section{padding:100px 0}
+.section-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:12px}
+.section-title{font-size:clamp(2rem,4vw,3rem);font-weight:800;margin-bottom:16px;line-height:1.15}
+.section-desc{font-size:1.1rem;color:var(--muted);max-width:700px;margin-bottom:48px;line-height:1.8}
+
+/* Cards Grid */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;transition:all .3s ease;position:relative;overflow:hidden}
+.card:hover{border-color:rgba(99,102,241,.4);transform:translateY(-4px);box-shadow:0 20px 60px rgba(99,102,241,.08)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--primary),var(--cyan));opacity:0;transition:opacity .3s}
+.card:hover::before{opacity:1}
+.card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
+.card h3{font-size:1.15rem;font-weight:700;margin-bottom:8px}
+.card p{font-size:.9rem;color:var(--muted);line-height:1.7}
+
+/* Diagram Section */
+.diagram-showcase{display:flex;flex-direction:column;gap:64px}
+.diagram-item{background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;transition:all .3s}
+.diagram-item:hover{border-color:rgba(99,102,241,.3);box-shadow:0 20px 80px rgba(99,102,241,.06)}
+.diagram-header{padding:28px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px}
+.diagram-num{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--purple));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;flex-shrink:0}
+.diagram-header h3{font-size:1.2rem;font-weight:700}
+.diagram-header p{font-size:.85rem;color:var(--muted);margin-top:2px}
+.diagram-img{padding:16px;background:linear-gradient(180deg,var(--surface) 0%,rgba(10,14,26,.8) 100%)}
+.diagram-img img{width:100%;border-radius:12px;display:block}
+
+/* Tech Stack */
+.tech-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:768px){.tech-grid{grid-template-columns:1fr}}
+.tech-col{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px}
+.tech-col h4{font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.tech-tag{display:inline-flex;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--muted);margin:3px 4px 3px 0}
+
+/* Flow Steps */
+.flow-section{margin-top:40px}
+.flow-phase{margin-bottom:40px}
+.flow-phase-title{display:inline-flex;align-items:center;gap:10px;font-size:1rem;font-weight:700;padding:6px 16px;border-radius:10px;margin-bottom:16px}
+.phase-blue{background:rgba(99,102,241,.12);color:var(--primary)}
+.phase-green{background:rgba(16,185,129,.12);color:var(--green)}
+.phase-purple{background:rgba(168,85,247,.12);color:var(--purple)}
+.phase-amber{background:rgba(245,158,11,.12);color:var(--amber)}
+.flow-steps{padding-left:24px;border-left:2px solid var(--border)}
+.flow-step{padding:8px 0 8px 20px;position:relative;font-size:.95rem;color:var(--muted);line-height:1.7}
+.flow-step::before{content:'';position:absolute;left:-7px;top:16px;width:12px;height:12px;border-radius:50%;background:var(--surface2);border:2px solid var(--primary)}
+.flow-step strong{color:var(--text)}
+.flow-step code{font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:2px 8px;border-radius:6px;background:var(--surface2);color:var(--cyan)}
+
+/* Judge Box */
+.judge-box{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(168,85,247,.08));border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:48px;text-align:center;margin-top:60px}
+.judge-box h2{font-size:2rem;font-weight:800;margin-bottom:8px}
+.judge-box .subtitle{color:var(--muted);margin-bottom:32px;font-size:1rem}
+.cred-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:600px;margin:0 auto 32px}
+.cred-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:left}
+.cred-card .cred-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.cred-card .cred-value{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:600;color:var(--cyan);word-break:break-all}
+.run-steps{text-align:left;max-width:650px;margin:0 auto}
+.run-steps h3{font-size:1.1rem;font-weight:700;margin-bottom:16px;text-align:center}
+.run-step{display:flex;gap:14px;margin-bottom:14px;align-items:flex-start}
+.run-step-num{width:28px;height:28px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0;margin-top:2px}
+.run-step-text{font-size:.9rem;color:var(--muted)}
+.run-step-text code{font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:2px 8px;border-radius:6px;background:var(--surface2);color:var(--green)}
+
+/* Narrative */
+.narrative{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:48px;margin-bottom:32px}
+.narrative h3{font-size:1.4rem;font-weight:800;margin-bottom:16px}
+.narrative p{color:var(--muted);font-size:1rem;line-height:1.9}
+.narrative p em{color:var(--cyan);font-style:italic}
+
+/* Table */
+.styled-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin:24px 0}
+.styled-table th{background:var(--surface2);padding:14px 20px;text-align:left;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.styled-table td{padding:14px 20px;border-top:1px solid var(--border);font-size:.9rem;color:var(--muted);vertical-align:top}
+.styled-table td strong{color:var(--text)}
+
+/* Footer */
+footer{padding:60px 24px;text-align:center;border-top:1px solid var(--border);margin-top:80px}
+footer p{color:var(--muted);font-size:.85rem}
+footer .brand{font-size:1.3rem;font-weight:800;margin-bottom:8px;background:linear-gradient(135deg,var(--primary),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:4px}
+
+/* Design Decisions */
+.decision-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.decision-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px}
+.decision-card h4{font-size:.95rem;font-weight:700;color:var(--cyan);margin-bottom:8px}
+.decision-card p{font-size:.85rem;color:var(--muted);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="glow-orb blue"></div>
+<div class="glow-orb cyan"></div>
+<div class="glow-orb purple"></div>
+
+<!-- HERO -->
+<section class="hero">
+<div>
+  <div class="hero-badge">🏆 Amazon Nova Hackathon 2026</div>
+  <h1>Olùkọ́</h1>
+  <p>A voice-first AI learning platform that transforms any PDF, video, or topic into a <strong style="color:#e2e8f0">live, interactive voice tutoring session</strong> with real-time whiteboard visualizations.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="num">5</div><div class="label">Amazon Nova Models</div></div>
+    <div class="hero-stat"><div class="num">3</div><div class="label">Tier Architecture</div></div>
+    <div class="hero-stat"><div class="num">15</div><div class="label">Days to Build</div></div>
+    <div class="hero-stat"><div class="num">∞</div><div class="label">Patience of the Tutor</div></div>
+  </div>
+</div>
+</section>
+
+<!-- INSPIRATION -->
+<section>
+<div class="container">
+  <div class="section-label">💡 Inspiration</div>
+  <div class="narrative">
+    <h3>Why We Built This</h3>
+    <p>The inspiration for <strong>Olùkọ́</strong> was born out of my own deep frustration with modern e-learning. Today's digital learning landscape often feels incredibly isolating. Staring at endless walls of AI-generated text is uninspiring, and slogging through dry PDFs literally puts me to sleep. Even worse are the long, pre-recorded video lectures—if you get stuck, you can't raise your hand to ask a question.</p>
+    <br>
+    <p>When I discovered the Amazon Nova Hackathon, a lightbulb went off: <em>What if we could make learning genuinely fun again?</em> I envisioned a platform that is deeply personalized, highly engaging, and, most importantly, creates a safe space where students can ask anything without the fear of being judged. That core desire to bring the human touch back to digital education is exactly what brought Olùkọ́ into existence.</p>
+  </div>
+</div>
+</section>
+
+<!-- WHAT IT DOES -->
+<section>
+<div class="container">
+  <div class="section-label">🎯 What It Does</div>
+  <h2 class="section-title">A Live AI Tutor That Speaks, Listens, Draws & Quizzes</h2>
+  <p class="section-desc">Olùkọ́ (Yoruba for "Teacher") gives every student something traditional e-learning never could — a patient, adaptive AI instructor who teaches through voice conversation and live whiteboard visualizations.</p>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon" style="background:rgba(99,102,241,.12)">📚</div>
+      <h3>Curriculum Generation</h3>
+      <p>Upload a PDF, a video (≤25 MB), or type any topic — AI generates a structured multi-lesson course in seconds using Amazon Nova Lite.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(6,182,212,.12)">🎙️</div>
+      <h3>Voice AI Tutoring</h3>
+      <p>Live speech-to-speech conversation with an AI instructor powered by Amazon Nova Sonic — sub-second latency, real-time adaptation.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(16,185,129,.12)">🎨</div>
+      <h3>Interactive Whiteboard</h3>
+      <p>AI-generated React visualizations and images rendered live in the browser using react-live — diagrams, code walkthroughs, illustrations.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(245,158,11,.12)">🧠</div>
+      <h3>Concentration Mode</h3>
+      <p>Voice-driven quizzes generated from your study material. The AI asks questions and evaluates your answers conversationally.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(168,85,247,.12)">⏸️</div>
+      <h3>Lesson Resume</h3>
+      <p>AI evaluates your session transcript to determine exactly where you left off — resume mid-lesson seamlessly without manual checkpoints.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(244,63,94,.12)">📊</div>
+      <h3>Study Analytics</h3>
+      <p>AI-scored mastery, clarity, retention, and quiz accuracy after each session — with personalized strengths, weaknesses, and recommendations.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ARCHITECTURE DIAGRAMS -->
+<section>
+<div class="container">
+  <div class="section-label">🏗️ Architecture</div>
+  <h2 class="section-title">How We Built It</h2>
+  <p class="section-desc">Olùkọ́ is a three-tier system — a React frontend, a Spring Boot backend, and a Python voice agent — orchestrated through LiveKit Cloud for real-time WebRTC and AWS Bedrock for AI inference.</p>
+
+  <div class="diagram-showcase">
+    <div class="diagram-item">
+      <div class="diagram-header">
+        <div class="diagram-num">1</div>
+        <div><h3>High-Level System Architecture</h3><p>Three-tier topology: Frontend → Backend → Voice Agent, connected via LiveKit and AWS Bedrock</p></div>
+      </div>
+      <div class="diagram-img"><img src="diagram/1_high_level_architecture.png" alt="High-Level Architecture"></div>
+    </div>
+    <div class="diagram-item">
+      <div class="diagram-header">
+        <div class="diagram-num">2</div>
+        <div><h3>Course Generation Flow</h3><p>Async pipeline: instant response → background AI processing → frontend polling</p></div>
+      </div>
+      <div class="diagram-img"><img src="diagram/2_course_generation_flow.png" alt="Course Generation Flow"></div>
+    </div>
+    <div class="diagram-item">
+      <div class="diagram-header">
+        <div class="diagram-num">3</div>
+        <div><h3>Live Lesson Flow (Voice + Whiteboard)</h3><p>WebRTC session setup → Agent initialization → Teaching loop with tool calls → Session end</p></div>
+      </div>
+      <div class="diagram-img"><img src="diagram/3_live_lesson_flow.png" alt="Live Lesson Flow"></div>
+    </div>
+    <div class="diagram-item">
+      <div class="diagram-header">
+        <div class="diagram-num">4</div>
+        <div><h3>AI Model Integration Map</h3><p>Five Amazon Nova/Titan models powering different layers of the platform</p></div>
+      </div>
+      <div class="diagram-img"><img src="diagram/4_ai_model_integration.png" alt="AI Model Integration"></div>
+    </div>
+    <div class="diagram-item">
+      <div class="diagram-header">
+        <div class="diagram-num">5</div>
+        <div><h3>Data Model (Entity-Relationship)</h3><p>Seven domain entities: Users, Courses, Lessons, Progress, Resume, Analytics</p></div>
+      </div>
+      <div class="diagram-img"><img src="diagram/5_data_model_diagram.png" alt="Data Model"></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- TECH STACK -->
+<section>
+<div class="container">
+  <div class="section-label">⚙️ Tech Stack</div>
+  <h2 class="section-title">Built With</h2>
+  <div class="tech-grid">
+    <div class="tech-col">
+      <h4>🖥️ Frontend</h4>
+      <span class="tech-tag">React 18</span><span class="tech-tag">TypeScript</span><span class="tech-tag">Vite 5</span><span class="tech-tag">Tailwind CSS 4</span><span class="tech-tag">Framer Motion</span><span class="tech-tag">LiveKit SDK</span><span class="tech-tag">react-live</span><span class="tech-tag">Zustand</span><span class="tech-tag">TanStack Query</span><span class="tech-tag">Axios</span><span class="tech-tag">Zod</span>
+    </div>
+    <div class="tech-col">
+      <h4>☕ Backend</h4>
+      <span class="tech-tag">Spring Boot 3.5</span><span class="tech-tag">Java 17</span><span class="tech-tag">PostgreSQL 17</span><span class="tech-tag">Redis</span><span class="tech-tag">AWS Bedrock SDK</span><span class="tech-tag">LiveKit Server SDK</span><span class="tech-tag">Apache Tika</span><span class="tech-tag">Spring Security</span><span class="tech-tag">JWT (jjwt)</span><span class="tech-tag">Resilience4j</span><span class="tech-tag">Lombok</span>
+    </div>
+    <div class="tech-col">
+      <h4>🐍 Voice Agent</h4>
+      <span class="tech-tag">Python 3.13</span><span class="tech-tag">LiveKit Agents SDK</span><span class="tech-tag">Amazon Nova Sonic</span><span class="tech-tag">Amazon Nova Lite</span><span class="tech-tag">Amazon Nova Premier</span><span class="tech-tag">Amazon Nova Pro</span><span class="tech-tag">Titan Image Gen v2</span><span class="tech-tag">asyncio</span><span class="tech-tag">httpx</span>
+    </div>
+  </div>
+
+  <!-- AI Models Table -->
+  <table class="styled-table" style="margin-top:40px">
+    <thead><tr><th>AI Model</th><th>Used By</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Amazon Nova Sonic</strong></td><td>Python Agent</td><td>Real-time speech-to-speech tutoring — STT + LLM + TTS in one bidirectional stream</td></tr>
+      <tr><td><strong>Amazon Nova Lite</strong></td><td>NovaSyllabusGenerator</td><td>Digests PDFs/videos/topics → structured JSON syllabus and topic context</td></tr>
+      <tr><td><strong>Amazon Nova Premier</strong></td><td>NovaToolService</td><td>Generates interactive React JSX for the live whiteboard</td></tr>
+      <tr><td><strong>Amazon Nova Pro</strong></td><td>LessonResumeService, StudyAnalyticsService</td><td>Evaluates transcripts for completion %, mastery scores, recommendations</td></tr>
+      <tr><td><strong>Titan Image Generator v2</strong></td><td>NovaToolService</td><td>Generates 1024×1024 educational images, cached in Redis (2h TTL)</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- KEY DATA FLOWS -->
+<section>
+<div class="container">
+  <div class="section-label">🔄 Data Flows</div>
+  <h2 class="section-title">How Everything Connects</h2>
+
+  <div class="flow-section">
+    <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:24px">Course Generation</h3>
+    <div class="flow-phase">
+      <div class="flow-phase-title phase-blue">Phase 1 — Instant Response</div>
+      <div class="flow-steps">
+        <div class="flow-step"><strong>Student uploads</strong> a PDF/video or types a topic on the frontend</div>
+        <div class="flow-step">Frontend sends <code>POST /courses/generate</code> with file, learning mode, and language</div>
+        <div class="flow-step"><strong>CourseGenerationService</strong> validates request, creates Course entity (<code>status=PENDING</code>), saves to PostgreSQL</div>
+        <div class="flow-step">Backend returns <code>202 Accepted</code> with courseId immediately and fires off the async worker</div>
+      </div>
+    </div>
+    <div class="flow-phase">
+      <div class="flow-phase-title phase-green">Phase 2 — Background Processing (@Async)</div>
+      <div class="flow-steps">
+        <div class="flow-step"><strong>Content Digestion:</strong> DOCUMENT → Apache Tika | VIDEO → Nova Lite | TOPIC → Nova Lite generates reference material</div>
+        <div class="flow-step"><strong>NovaSyllabusGenerator</strong> sends context to <strong>Nova Lite</strong> → returns structured JSON syllabus</div>
+        <div class="flow-step">Worker parses JSON, creates Lesson entities, saves to PostgreSQL, updates <code>status=READY</code></div>
+      </div>
+    </div>
+    <div class="flow-phase">
+      <div class="flow-phase-title phase-purple">Phase 3 — Frontend Polling</div>
+      <div class="flow-steps">
+        <div class="flow-step">Frontend polls <code>GET /courses/{id}/status</code> every 2 seconds</div>
+        <div class="flow-step">When <code>READY</code>, fetches lessons and displays the syllabus to the student</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-section" style="margin-top:56px">
+    <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:24px">Live Lesson (Voice + Whiteboard)</h3>
+    <div class="flow-phase">
+      <div class="flow-phase-title phase-blue">Stage 1 — Session Setup</div>
+      <div class="flow-steps">
+        <div class="flow-step">Student clicks a lesson → frontend requests <code>GET /livekit/token</code></div>
+        <div class="flow-step">Backend verifies JWT, checks ownership, generates signed LiveKit token (room name = lesson UUID)</div>
+        <div class="flow-step">Frontend connects to LiveKit room via WebRTC (audio + data channel)</div>
+      </div>
+    </div>
+    <div class="flow-phase">
+      <div class="flow-phase-title phase-green">Stage 2 — Agent Init</div>
+      <div class="flow-steps">
+        <div class="flow-step">LiveKit dispatches <strong>Python Agent</strong> into the room → agent reads room name as lesson ID</div>
+        <div class="flow-step">Agent fetches system prompt from <code>GET /internal/lessons/{id}/prompt</code></div>
+        <div class="flow-step">Agent starts <strong>Nova Sonic</strong> session (STT → LLM → TTS in one stream) and greets the student</div>
+      </div>
+    </div>
+    <div class="flow-phase">
+      <div class="flow-phase-title phase-purple">Stage 3 — Live Teaching Loop</div>
+      <div class="flow-steps">
+        <div class="flow-step">🎤 Student speaks → WebRTC audio → <strong>Nova Sonic</strong> processes → 🔊 AI responds</div>
+        <div class="flow-step"><strong>draw_canvas_code:</strong> Agent → Backend → <strong>Nova Premier</strong> generates React JSX → Data Channel → react-live renders on whiteboard</div>
+        <div class="flow-step"><strong>insert_image:</strong> Agent → Backend → <strong>Titan Image Gen v2</strong> → Redis cache → Data Channel → image displayed</div>
+        <div class="flow-step"><strong>show_quiz_question:</strong> Agent sends quiz JSON via Data Channel → quiz UI on whiteboard</div>
+      </div>
+    </div>
+    <div class="flow-phase">
+      <div class="flow-phase-title phase-amber">Stage 4 — Session End</div>
+      <div class="flow-steps">
+        <div class="flow-step">Agent calls <code>end_session</code> → end signal via Data Channel → frontend navigates back</div>
+        <div class="flow-step">Transcript POSTed to backend → <strong>Nova Pro</strong> evaluates completion % and generates analytics scores</div>
+        <div class="flow-step">Lesson marked complete → next lesson unlocked → analytics saved</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- KEY DESIGN DECISIONS -->
+<section>
+<div class="container">
+  <div class="section-label">🧩 Design Decisions</div>
+  <h2 class="section-title">Why We Made These Choices</h2>
+  <div class="decision-grid">
+    <div class="decision-card"><h4>Async Course Generation</h4><p>PDF/video ingestion + AI syllabus generation takes 10–30s. Immediate HTTP response with frontend polling prevents timeouts.</p></div>
+    <div class="decision-card"><h4>Room Name = Lesson UUID</h4><p>Zero-coordination routing — the Python agent reads ctx.room.name as the lesson ID directly. No extra lookup needed.</p></div>
+    <div class="decision-card"><h4>react-live for Whiteboard</h4><p>Sandboxed in-browser JSX execution. AI-generated code runs instantly in the client — no server-side rendering needed.</p></div>
+    <div class="decision-card"><h4>Redis for Image Cache</h4><p>Generated images are base64-encoded (~1–2 MB). Redis provides fast retrieval with automatic 2-hour TTL expiry.</p></div>
+    <div class="decision-card"><h4>Transcript-Based Resume</h4><p>Nova Pro evaluates session transcripts for completion %, enabling intelligent mid-lesson resume without manual checkpoints.</p></div>
+    <div class="decision-card"><h4>Resilience4j on Bedrock</h4><p>Circuit breaker + retry prevents cascading failures from transient AWS API issues across all model calls.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- CHALLENGES, ACCOMPLISHMENTS, LEARNED -->
+<section>
+<div class="container">
+  <div class="narrative">
+    <h3>🔥 Challenges We Ran Into</h3>
+    <p>Building this wasn't without its hurdles, especially since we joined the hackathon just <strong>15 days before the deadline</strong>. Operating under that intense time crunch was stressful enough, but we also faced significant friction with the Amazon Nova sandbox environment. Frequent timeouts severely slowed down our ability to test and iterate rapidly.</p>
+    <br>
+    <p>Beyond infrastructure, our biggest technical hurdle was mastering <strong>prompt engineering</strong>. Making a Large Language Model behave deterministically within a dynamic, real-time application is an art. We quickly learned the golden rule of AI: <em>garbage instructions yield garbage outputs.</em></p>
+  </div>
+  <div class="narrative">
+    <h3>🏅 Accomplishments We're Proud Of</h3>
+    <p>We built a <strong>fully functional, voice-first AI tutor in 15 days</strong> — from zero to a working product with course generation, live voice interaction, an interactive whiteboard, and study analytics. The real-time whiteboard that executes AI-generated React code live in the browser is something we're especially proud of. Five different Amazon Nova models work in harmony — Sonic for voice, Lite for syllabus generation, Premier for code visualization, Pro for evaluation, and Titan for image generation.</p>
+  </div>
+  <div class="narrative">
+    <h3>📖 What We Learned</h3>
+    <p>This project fundamentally changed my perspective on the intersection of technology and education. I learned that <strong>the absolute future of learning belongs to multimodal AI agents</strong>. They have the unprecedented power to see, hear, and adapt to human beings in real-time.</p>
+    <br>
+    <p>Equally important, I realized that <strong>prompt engineering is no longer just a buzzword — it is a mandatory survival skill</strong>. In this new era of multimodal AI, you cannot just code the logic; you have to know how to effectively communicate with, and constrain, the intelligence powering your application.</p>
+  </div>
+  <div class="narrative">
+    <h3>🚀 What's Next for Olùkọ́</h3>
+    <p><strong>Multi-language voice support</strong> — expand to Yoruba, French, Spanish and more. <strong>Collaborative learning rooms</strong> — multiple students learning together with the AI. <strong>Mobile app</strong> with push notifications for learning streaks. <strong>Custom knowledge bases</strong> for educators. <strong>Advanced analytics</strong> with spaced repetition and adaptive difficulty. <strong>Plugin marketplace</strong> for third-party whiteboard tools and quiz formats.</p>
+  </div>
+</div>
+</section>
+
+<!-- JUDGE LOGIN -->
+<section>
+<div class="container">
+  <div class="judge-box">
+    <h2>👋 For Judges</h2>
+    <p class="subtitle">Use the credentials below to log in and explore the platform</p>
+    <div class="cred-grid">
+      <div class="cred-card">
+        <div class="cred-label">Username</div>
+        <div class="cred-value">oluko.admin@gmail.com</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-label">Password</div>
+        <div class="cred-value">Oluko@2026</div>
+      </div>
+    </div>
+    <div class="run-steps">
+      <h3>Run Instructions</h3>
+      <div class="run-step"><div class="run-step-num">1</div><div class="run-step-text">Start databases: <code>cd Backend && docker compose up -d</code> (PostgreSQL on 5433, Redis on 6380)</div></div>
+      <div class="run-step"><div class="run-step-num">2</div><div class="run-step-text">Start Java backend: <code>cd Backend && ./mvnw spring-boot:run</code> (runs on port 8080)</div></div>
+      <div class="run-step"><div class="run-step-num">3</div><div class="run-step-text">Start Python agent: <code>cd Backend/neuronflow-agent && uv sync && uv run python agent.py dev</code></div></div>
+      <div class="run-step"><div class="run-step-num">4</div><div class="run-step-text">Start frontend: <code>cd Frontend && npm install && npm run dev</code> (runs on port 5173)</div></div>
+    </div>
+    <p style="margin-top:24px;font-size:.8rem;color:var(--muted)"><strong>Required:</strong> AWS Bedrock access (us-east-1) · LiveKit Cloud API key/secret · Gmail SMTP credentials</p>
+  </div>
+</div>
+</section>
+
+<footer>
+  <div class="brand">Olùkọ́</div>
+  <p>Built with ❤️ for the Amazon Nova Hackathon 2026</p>
+</footer>
+</body>
+</html>
