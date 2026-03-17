@@ -1,4 +1,4 @@
----
+
 
 ## Login Credentials (For Judges)
 
@@ -8,7 +8,6 @@
 | **Password** | `Oluko@2026` |
 | **Otp** | `12345678` |
 
----
 
 
 
