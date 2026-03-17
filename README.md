@@ -1,3 +1,18 @@
+---
+
+## Login Credentials (For Judges)
+
+| Field | Value |
+|---|---|
+| **Username** | `oluko.admin@gmail.com` |
+| **Password** | `Oluko@2026` |
+| **Otp** | `12345678` |
+
+---
+
+
+
+
 # Olùkọ́
 
 **Your AI teacher that speaks, draws, and never runs out of patience.**
@@ -276,16 +291,7 @@ Opens on `http://localhost:5173`. Sign up, create a class, and start your first 
 | One-size-fits-all courses | Curriculum generated on-the-fly from *your* material |
 | Type your questions into a chatbox | Just speak — like talking to a real tutor |
 
----
 
-## Login Credentials (For Judges)
-
-| Field | Value |
-|---|---|
-| **Username** | `oluko.admin@gmail.com` |
-| **Password** | `Oluko@2026` |
-
----
 
 ## Team
 
