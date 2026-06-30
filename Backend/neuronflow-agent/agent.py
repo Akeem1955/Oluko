@@ -17,9 +17,11 @@ from livekit.agents import (
     cli,
     function_tool,
 )
-from livekit.plugins.aws.experimental.realtime import RealtimeModel
+from livekit.plugins.google import realtime
+from livekit.plugins import silero, google, elevenlabs
 
 load_dotenv()
+
 logger = logging.getLogger("neuronflow-agent")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8080")
@@ -85,78 +87,33 @@ async def persist_session_transcript(
 # 1. WHITEBOARD TOOLS (standalone functions)
 # ==========================================
 
-@function_tool(description="Use this to draw an interactive educational visualization on the user's whiteboard. Always provide both the concept prompt and a clear interactivity_description that specifies exactly what learners can click, drag, toggle, or step through.")
-async def draw_canvas_code(
+@function_tool(description="Render a React component on the student's whiteboard. Provide a single, self-contained React functional component (JSX) called LessonVisualization. The component must use hooks as React.useState, React.useEffect, React.useRef. Do not include imports or exports. End the code string with: render(<LessonVisualization />);. Use Tailwind CSS for responsive styling, custom SVG shapes, animated transitions, or interactive panels to make the lesson clear. Keep it interactive and highly visual.")
+async def whiteboard_draw(
     ctx: RunContext,
-    prompt_for_nova: str,
-    interactivity_description: str,
+    react_code: str,
 ) -> str:
     logger.info(
-        "Tool called: draw_canvas_code with prompt=%s interactivity=%s",
-        prompt_for_nova,
-        interactivity_description,
+        "Tool called: whiteboard_draw (react code length=%d)",
+        len(react_code or ""),
     )
 
     room = ctx.session.room_io.room
-    session = ctx.session
 
-    # Notify frontend that generation is starting
-    processing_payload = json.dumps({"type": "TOOL_PROCESSING", "message": "Generating visual code..."})
-    await room.local_participant.publish_data(processing_payload.encode("utf-8"))
+    if not react_code or not react_code.strip():
+        error_payload = json.dumps({"type": "TOOL_ERROR", "message": "Empty react code."})
+        await room.local_participant.publish_data(error_payload.encode("utf-8"))
+        return "Error: react_code was empty. Generate a valid React component and try again."
 
-    async def run_canvas_generation() -> None:
-        async with aiohttp.ClientSession() as http_session:
-            try:
-                async with http_session.post(
-                    f"{BACKEND_URL}/api/v1/internal/tools/generate-canvas",
-                    json={
-                        "prompt": prompt_for_nova,
-                        "interactivityDescription": interactivity_description,
-                    },
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        generated_code = data.get("code", "")
-                        walkthrough = data.get("walkthrough", "An interactive visualization is now on the whiteboard.")
-
-                        success_payload = json.dumps({
-                            "type": "TOOL_CALL_RESULT",
-                            "action": "canvas",
-                            "payload": generated_code,
-                        })
-                        await room.local_participant.publish_data(success_payload.encode("utf-8"))
-
-                        session.generate_reply(
-                            instructions=(
-                                "A new interactive whiteboard visualization is now visible. "
-                                "Explain what the student sees and guide interaction using this summary: "
-                                f"{walkthrough}"
-                            ),
-                            tool_choice="none",
-                        )
-                    else:
-                        logger.error(f"Backend returned {response.status} for canvas generation.")
-                        error_payload = json.dumps({"type": "TOOL_ERROR", "message": "Failed to generate visual code."})
-                        await room.local_participant.publish_data(error_payload.encode("utf-8"))
-                        session.generate_reply(
-                            instructions="Canvas generation failed. Briefly acknowledge it and continue teaching with a verbal explanation.",
-                            tool_choice="none",
-                        )
-            except Exception as e:
-                logger.error(f"Error calling Java backend for canvas: {e}")
-                error_payload = json.dumps({"type": "TOOL_ERROR", "message": "Connection to backend failed."})
-                await room.local_participant.publish_data(error_payload.encode("utf-8"))
-                session.generate_reply(
-                    instructions="Canvas generation backend is unreachable. Continue teaching verbally and ask the student to retry in a moment.",
-                    tool_choice="none",
-                )
-
-    asyncio.create_task(run_canvas_generation())
+    success_payload = json.dumps({
+        "type": "TOOL_CALL_RESULT",
+        "action": "canvas",
+        "payload": react_code,
+    })
+    await room.local_participant.publish_data(success_payload.encode("utf-8"))
 
     return (
-        "Canvas generation started asynchronously. "
-        "Continue speaking immediately while the whiteboard loads. "
-        "When it appears, guide the student through the on-screen interaction."
+        "The React visualization is now rendering on the student's whiteboard. "
+        "Continue your verbal explanation and refer to what is visible on screen."
     )
 
 
@@ -275,22 +232,55 @@ async def end_session(ctx: RunContext, final_message: str = "Great work today.")
     )
 
 
+@function_tool(description="Mute the student's microphone so they cannot speak or interrupt.")
+async def mute_student(ctx: RunContext) -> str:
+    logger.info("Tool called: mute_student")
+    room = ctx.session.room_io.room
+    payload = json.dumps({"type": "CONTROL_ACTION", "action": "mute"})
+    await room.local_participant.publish_data(payload.encode("utf-8"))
+    return "Success: The student has been muted."
+
+
+@function_tool(description="Unmute the student's microphone so they are allowed to speak.")
+async def unmute_student(ctx: RunContext) -> str:
+    logger.info("Tool called: unmute_student")
+    room = ctx.session.room_io.room
+    payload = json.dumps({"type": "CONTROL_ACTION", "action": "unmute"})
+    await room.local_participant.publish_data(payload.encode("utf-8"))
+    return "Success: The student has been unmuted."
+
+
+@function_tool(description="Resume playing the YouTube video for the student.")
+async def play_video(ctx: RunContext) -> str:
+    logger.info("Tool called: play_video")
+    room = ctx.session.room_io.room
+    payload = json.dumps({"type": "CONTROL_ACTION", "action": "play_video"})
+    await room.local_participant.publish_data(payload.encode("utf-8"))
+    return "Success: Video playback resumed."
+
+
+@function_tool(description="Pause the YouTube video for the student.")
+async def pause_video(ctx: RunContext) -> str:
+    logger.info("Tool called: pause_video")
+    room = ctx.session.room_io.room
+    payload = json.dumps({"type": "CONTROL_ACTION", "action": "pause_video"})
+    await room.local_participant.publish_data(payload.encode("utf-8"))
+    return "Success: Video playback paused."
+
+
 # ==========================================
 # 2. FETCH CONTEXT FROM JAVA BACKEND
 # ==========================================
-async def fetch_lesson_context(lesson_id: str) -> str:
+async def fetch_lesson_context(lesson_id: str) -> dict:
     """Calls the Java Spring Boot API to get what Nova Sonic should teach."""
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(f"{BACKEND_URL}/api/v1/internal/lessons/{lesson_id}/prompt") as response:
                 if response.status == 200:
-                    data = await response.json()
-                    return data.get("systemPrompt", "You are a helpful AI tutor.")
-                else:
-                    return "You are NeuronFlow, an AI tutor. (Fallback prompt)"
+                    return await response.json()
     except Exception as e:
         logger.error(f"Failed to fetch from Java: {e}")
-        return "You are NeuronFlow, an AI tutor. (Fallback prompt)"
+    return {"systemPrompt": "You are NeuronFlow, an AI tutor. (Fallback prompt)", "isTeacherClass": "false", "voiceId": ""}
 
 
 # ==========================================
@@ -303,19 +293,98 @@ async def entrypoint(ctx: JobContext):
     # The room name IS the Lesson ID from Java
     lesson_id = ctx.room.name
     runtime_state = SessionRuntimeState(lesson_id=lesson_id)
-    system_prompt = await fetch_lesson_context(lesson_id)
+    
+    context = await fetch_lesson_context(lesson_id)
+    system_prompt = context.get("systemPrompt", "You are NeuronFlow, an AI tutor. (Fallback prompt)")
+    is_teacher_class = context.get("isTeacherClass", "false") == "true"
+    voice_id = context.get("voiceId", "")
 
-    # Build the Agent with Nova Sonic (speech-to-speech) + whiteboard tools
+    # Build the Agent with whiteboard tools
     agent = Agent(
         instructions=system_prompt,
-        tools=[draw_canvas_code, insert_image, show_quiz_question, end_session],
+        tools=[whiteboard_draw, insert_image, show_quiz_question, end_session, mute_student, unmute_student, play_video, pause_video],
     )
 
-    # Create session with Nova Sonic RealtimeModel (handles STT+LLM+TTS in one pass)
-    session = AgentSession(
-        llm=RealtimeModel(),
-        userdata=runtime_state,
-    )
+    if is_teacher_class:
+        logger.info(f"Initializing voice pipeline agent with ElevenLabs voice_id={voice_id}")
+        session = AgentSession(
+            # stt disabled as requested
+            vad=silero.VAD.load(),
+            llm=google.LLM(model="gemini-2.5-flash"),
+            tts=elevenlabs.TTS(voice_id=voice_id),
+            userdata=runtime_state,
+        )
+    else:
+        # Create session with Gemini Live RealtimeModel
+        session = AgentSession(
+            llm=realtime.RealtimeModel(
+                model="gemini-3.1-flash-live-preview"
+            ),
+            userdata=runtime_state,
+        )
+
+    @ctx.room.on("data_received")
+    def _on_data_received(dp) -> None:
+        try:
+            payload = json.loads(dp.data.decode("utf-8"))
+            if payload.get("type") == "SANDBOX_ERROR":
+                error_msg = payload.get("message")
+                logger.error(f"Sandbox error received: {error_msg}")
+                asyncio.create_task(
+                    session.generate_reply(
+                        instructions=(
+                            f"The React component you just rendered with whiteboard_draw failed with the following error:\n"
+                            f"{error_msg}\n\n"
+                            f"Please rewrite the React component (LessonVisualization) with correct syntax, hooks as React.useState etc., "
+                            f"declare all variables, ensure no imports or exports, and call whiteboard_draw again with the fixed code. Do not speak the code."
+                        )
+                    )
+                )
+            elif payload.get("type") == "USER_ACTION" and payload.get("action") == "raise_hand":
+                logger.info("Student raised hand")
+                asyncio.create_task(
+                    session.generate_reply(
+                        instructions=(
+                            "The student has just raised their hand. Acknowledge this verbally. "
+                            "If you want to allow them to speak, you can call the unmute_student tool to unmute them."
+                        )
+                    )
+                )
+            elif payload.get("type") == "TEACHER_ACTION":
+                action = payload.get("action")
+                if action == "ask_question":
+                    question = payload.get("question", "")
+                    logger.info(f"Teacher asked to ask a question: {question}")
+                    if question:
+                        if not isinstance(session.llm, realtime.RealtimeModel):
+                            asyncio.create_task(session.say(question))
+                        else:
+                            asyncio.create_task(
+                                session.generate_reply(
+                                    instructions=f"The teacher has directed you to ask the student this question: '{question}'. Ask it now."
+                                )
+                            )
+                elif action == "end_class":
+                    logger.info("Teacher requested to end the class")
+                    asyncio.create_task(
+                        end_session(ctx, final_message="The class has been ended by the teacher. Goodbye!")
+                    )
+            elif payload.get("type") == "VIDEO_EVENT" and payload.get("event") == "paused":
+                timestamp = payload.get("timestamp", 0)
+                logger.info(f"YouTube video paused at {timestamp}s")
+                asyncio.create_task(
+                    session.generate_reply(
+                        instructions=(
+                            f"The YouTube video has paused at {timestamp} seconds. "
+                            f"Explain the concepts covered in this segment in the designated target language and personality. "
+                            f"You can use the whiteboard_draw tool to illustrate your points. "
+                            f"When you are done explaining, ask the student if they are ready to proceed, "
+                            f"and call play_video to resume the video."
+                        )
+                    )
+                )
+        except Exception as e:
+            logger.warning(f"Failed to process data packet: {e}")
 
     @session.on("user_input_transcribed")
     def _on_user_input_transcribed(event) -> None:

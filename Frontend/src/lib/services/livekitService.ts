@@ -6,10 +6,10 @@ export const livekitService = {
    * Fetch a secure LiveKit room token for a given lesson.
    * Backend returns { token, roomName, livekitUrl }.
    */
-  getToken: async (lessonId: string): Promise<LiveKitTokenResponse> => {
+  getToken: async (lessonId: string, isTeacher?: boolean): Promise<LiveKitTokenResponse> => {
     const response = await apiClient.get<LiveKitTokenResponse>(
       `/api/v1/livekit/token`,
-      { params: { lessonId } },
+      { params: { lessonId, isTeacher: isTeacher ?? false } },
     );
     return response.data;
   },

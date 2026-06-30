@@ -9,7 +9,7 @@ interface UseLivekitTokenReturn {
   resumeSummary: string;
   isLoading: boolean;
   error: string | null;
-  fetchToken: (lessonId: string) => Promise<void>;
+  fetchToken: (lessonId: string, isTeacher?: boolean) => Promise<void>;
 }
 
 /**
@@ -25,11 +25,11 @@ export function useLivekitToken(): UseLivekitTokenReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchToken = useCallback(async (lessonId: string) => {
+  const fetchToken = useCallback(async (lessonId: string, isTeacher?: boolean) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await livekitService.getToken(lessonId);
+      const res = await livekitService.getToken(lessonId, isTeacher);
       setToken(res.token);
       setLivekitUrl(res.livekitUrl);
       setHasResume(Boolean(res.hasResume));

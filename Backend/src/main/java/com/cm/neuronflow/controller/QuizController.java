@@ -9,7 +9,7 @@ import com.cm.neuronflow.internal.exceptions.NeuronFlowException;
 import com.cm.neuronflow.internal.repository.CourseRepository;
 import com.cm.neuronflow.internal.repository.LessonRepository;
 import com.cm.neuronflow.services.DocumentExtractionService;
-import com.cm.neuronflow.services.NovaQuizGenerator;
+import com.cm.neuronflow.services.GeminiQuizGenerator;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,16 +26,15 @@ public class QuizController {
     private final CourseRepository courseRepository;
     private final LessonRepository lessonRepository;
     private final DocumentExtractionService extractionService;
-    private final NovaQuizGenerator novaQuizGenerator;
-
+    private final GeminiQuizGenerator geminiQuizGenerator;
     public QuizController(CourseRepository courseRepository,
-              LessonRepository lessonRepository,
+                          LessonRepository lessonRepository,
                           DocumentExtractionService extractionService,
-                          NovaQuizGenerator novaQuizGenerator) {
-    this.courseRepository = courseRepository;
+                          GeminiQuizGenerator geminiQuizGenerator) {
+        this.courseRepository = courseRepository;
         this.lessonRepository = lessonRepository;
         this.extractionService = extractionService;
-        this.novaQuizGenerator = novaQuizGenerator;
+        this.geminiQuizGenerator = geminiQuizGenerator;
     }
 
     @PostMapping("/generate-quiz-session")
@@ -53,7 +52,7 @@ public class QuizController {
         int safeEnd = endPage == null || endPage < safeStart ? safeStart : endPage;
 
         String targetedText = extractionService.extractSpecificPagesFromPdf(file.getBytes(), safeStart, safeEnd);
-        String quizBank = novaQuizGenerator.generateQuizBank(targetedText);
+        String quizBank = geminiQuizGenerator.generateQuizBank(targetedText);
 
         String objective = String.format(
             "You are now acting as a strict but encouraging Quizmaster. " +
@@ -108,7 +107,7 @@ public class QuizController {
             String targetedText = extractionService.extractSpecificPagesFromPdf(file.getBytes(), startPage, endPage);
 
             // 3. Generate the Quiz Bank using Nova 2 Lite
-            String quizBank = novaQuizGenerator.generateQuizBank(targetedText);
+            String quizBank = geminiQuizGenerator.generateQuizBank(targetedText);
 
             // 4. Update the Lesson Objective so Sonic becomes the Quizmaster
             String newObjective = String.format(

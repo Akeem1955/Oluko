@@ -64,3 +64,33 @@ Thumbs.db
 # ==========================================
 *.log
 npm-debug.log*
+
+# ==========================================
+# FINAL YEAR PROJECT / REPORT DRAFTS
+# ==========================================
+# Report and Guideline files
+*.docx
+*~lock.*
+*.pdf
+
+# HTML & Markdown Drafts / Reports
+*cognito_final_year_project*
+*Cognito*
+*cognito*
+Concept_Note.html
+Prototype_Presentation.html
+akimy_final_project.html
+chapter_three_content.html
+front_matter.md
+
+# Image Assets for Report
+1.png
+2.png
+3.png
+4.png
+5.png
+
+# Scripts for report generation/manipulation
+generate_report.py
+expand_chapter3.py
+merge_html.py

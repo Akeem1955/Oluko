@@ -5,17 +5,20 @@ import {
   useVoiceAssistant,
   useConnectionState,
   useDataChannel,
+  useLocalParticipant,
+  useRoomContext,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { ConnectionState } from 'livekit-client';
-import { ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, Mic, MicOff, Hand } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLivekitToken } from '@/lib/hooks/activity/useLivekitToken';
 import { AgentVisualizer } from './AgentVisualizer';
 import { InteractiveWhiteboard } from './InteractiveWhiteboard';
 import { ConfirmDialog } from '@/components/dialog/ConfirmDialog';
 import { classService } from '@/lib/services/classService';
-import { WhiteboardPayload } from '@/lib/types';
+import { useToastStore } from '@/lib/store/toastStore';
+
 
 interface LessonRoomProps {
   lessonId: string;
@@ -28,10 +31,12 @@ interface LessonRoomProps {
  */
 function LessonRoomContent({
   lessonTitle,
+  isTeacher,
   onRemoteEndSession,
   onConnectionLost,
 }: {
   lessonTitle?: string;
+  isTeacher: boolean;
   onRemoteEndSession: (message?: string) => void;
   onConnectionLost: () => void;
 }) {
@@ -39,6 +44,10 @@ function LessonRoomContent({
   const connectionState = useConnectionState();
   const hasConnectedRef = useRef(false);
   const isConnected = connectionState === ConnectionState.Connected;
+  const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+  const [handRaised, setHandRaised] = useState(false);
+  const [teacherQuestion, setTeacherQuestion] = useState('');
+  const room = useRoomContext();
 
   useEffect(() => {
     if (connectionState === ConnectionState.Connected) {
@@ -51,21 +60,97 @@ function LessonRoomContent({
     }
   }, [connectionState, onConnectionLost]);
 
+  // Enforce Ghost Mode (Students automatically unsubscribe from teacher tracks)
+  useEffect(() => {
+    if (!room) return;
+
+    const handleTrackSubscribed = (track: any, publication: any, participant: any) => {
+      if (participant.identity.startsWith('teacher_') && !isTeacher) {
+        console.log('Ghost Mode: Unsubscribing from teacher track:', track.sid);
+        publication.setSubscribed(false);
+      }
+    };
+
+    room.on('trackSubscribed', handleTrackSubscribed);
+
+    // Unsubscribe from any teachers already in the room
+    room.remoteParticipants.forEach((participant) => {
+      if (participant.identity.startsWith('teacher_') && !isTeacher) {
+        participant.trackPublications.forEach((pub) => {
+          if (pub.isSubscribed) {
+            pub.setSubscribed(false);
+          }
+        });
+      }
+    });
+
+    return () => {
+      room.off('trackSubscribed', handleTrackSubscribed);
+    };
+  }, [room, isTeacher]);
+
   // The agent is speaking when its state is 'speaking'
   const isSpeaking = voiceAssistant.state === 'speaking';
 
-  useDataChannel((msg) => {
+  const { send } = useDataChannel((msg) => {
     try {
       const payloadStr = new TextDecoder().decode(msg.payload);
-      const data: WhiteboardPayload = JSON.parse(payloadStr);
+      const data = JSON.parse(payloadStr);
 
       if (data.type === 'TOOL_CALL_RESULT' && data.action === 'end_session') {
         onRemoteEndSession(data.message);
+      } else if (data.type === 'CONTROL_ACTION') {
+        if (data.action === 'mute') {
+          localParticipant.setMicrophoneEnabled(false);
+        } else if (data.action === 'unmute') {
+          localParticipant.setMicrophoneEnabled(true);
+          setHandRaised(false); // Lower hand automatically when tutor unmutes
+        }
       }
     } catch (e) {
       console.error('Failed to parse session control data message:', e);
     }
   });
+
+  const handleRaiseHand = () => {
+    if (!send) return;
+    try {
+      const newHandState = !handRaised;
+      setHandRaised(newHandState);
+      if (newHandState) {
+        const payload = JSON.stringify({ type: 'USER_ACTION', action: 'raise_hand' });
+        send(new TextEncoder().encode(payload), { reliable: true });
+      }
+    } catch (e) {
+      console.error('Failed to send raise hand payload:', e);
+    }
+  };
+
+  const handleToggleMic = () => {
+    localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+  };
+
+  const handleSendTeacherQuestion = () => {
+    if (!teacherQuestion.trim() || !send) return;
+    const payload = JSON.stringify({
+      type: 'TEACHER_ACTION',
+      action: 'ask_question',
+      question: teacherQuestion.trim()
+    });
+    send(new TextEncoder().encode(payload), { reliable: true });
+    setTeacherQuestion('');
+    useToastStore.getState().addToast("Question sent to AI tutor!", "success");
+  };
+
+  const handleEndClass = () => {
+    if (!send) return;
+    const payload = JSON.stringify({
+      type: 'TEACHER_ACTION',
+      action: 'end_class'
+    });
+    send(new TextEncoder().encode(payload), { reliable: true });
+    onRemoteEndSession("Class ended by the teacher.");
+  };
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row relative overflow-hidden">
@@ -113,9 +198,94 @@ function LessonRoomContent({
               <p className="text-slate-400 text-sm">{lessonTitle}</p>
             )}
             <p className="text-slate-500 text-xs mt-4">
-              Your microphone is active. Just speak naturally.
+              {isTeacher
+                ? (isMicrophoneEnabled ? "Microphone active (silent to students)" : "Microphone muted")
+                : (isMicrophoneEnabled ? "Your microphone is active. Just speak naturally." : "Your microphone is muted by you or the tutor.")}
             </p>
           </div>
+
+          {/* Interactive controls */}
+          {isTeacher ? (
+            <div className="w-full space-y-4 mt-6 border-t border-white/10 pt-6 px-2">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleToggleMic}
+                  className={`p-3 rounded-xl transition-all duration-200 cursor-pointer ${
+                    isMicrophoneEnabled
+                      ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+                      : 'bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/30'
+                  }`}
+                  title={isMicrophoneEnabled ? 'Mute Microphone' : 'Unmute Microphone'}
+                >
+                  {isMicrophoneEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                </button>
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                  Ghost Mic: {isMicrophoneEnabled ? "Active (Silent to Students)" : "Muted"}
+                </span>
+              </div>
+              
+              <div className="space-y-2 text-left">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Direct the AI Tutor:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Type question/directive..."
+                    value={teacherQuestion}
+                    onChange={(e) => setTeacherQuestion(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendTeacherQuestion(); }}
+                    className="flex-1 px-3 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-white focus:outline-hidden focus:ring-1 focus:ring-rose-500"
+                  />
+                  <button
+                    onClick={handleSendTeacherQuestion}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={handleEndClass}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all text-sm mt-4 cursor-pointer"
+              >
+                End Class for Everyone
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 mt-6">
+              {/* Mic toggle */}
+              <button
+                onClick={handleToggleMic}
+                className={`p-4 rounded-full transition-all duration-200 cursor-pointer ${
+                  isMicrophoneEnabled
+                    ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                    : 'bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/30'
+                }`}
+                title={isMicrophoneEnabled ? 'Mute Microphone' : 'Unmute Microphone'}
+              >
+                {isMicrophoneEnabled ? (
+                  <Mic className="w-5 h-5" />
+                ) : (
+                  <MicOff className="w-5 h-5" />
+                )}
+              </button>
+
+              {/* Raise Hand toggle */}
+              <button
+                onClick={handleRaiseHand}
+                className={`px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all duration-200 cursor-pointer ${
+                  handRaised
+                    ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                }`}
+              >
+                <Hand className={`w-5 h-5 ${handRaised ? 'animate-bounce' : ''}`} />
+                <span>{handRaised ? 'Hand Raised' : 'Raise Hand'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -142,14 +312,16 @@ export function LessonRoom({ lessonId, lessonTitle }: LessonRoomProps) {
     error,
     fetchToken,
   } = useLivekitToken();
+  const [searchParams] = useSearchParams();
+  const isTeacher = searchParams.get('isTeacher') === 'true';
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [remoteEnded, setRemoteEnded] = useState(false);
   const [sessionDisconnected, setSessionDisconnected] = useState(false);
   const [roomInstanceKey, setRoomInstanceKey] = useState(0);
 
   useEffect(() => {
-    fetchToken(lessonId);
-  }, [lessonId, fetchToken]);
+    fetchToken(lessonId, isTeacher);
+  }, [lessonId, fetchToken, isTeacher]);
 
   const handleBackClick = () => setShowExitDialog(true);
   const handleConfirmExit = async () => {
@@ -184,7 +356,7 @@ export function LessonRoom({ lessonId, lessonTitle }: LessonRoomProps) {
 
   const handleReconnect = async () => {
     setSessionDisconnected(false);
-    await fetchToken(lessonId);
+    await fetchToken(lessonId, isTeacher);
     setRoomInstanceKey((prev) => prev + 1);
   };
 
@@ -310,6 +482,7 @@ export function LessonRoom({ lessonId, lessonTitle }: LessonRoomProps) {
       >
         <LessonRoomContent
           lessonTitle={lessonTitle}
+          isTeacher={isTeacher}
           onRemoteEndSession={handleRemoteEndSession}
           onConnectionLost={handleConnectionLost}
         />

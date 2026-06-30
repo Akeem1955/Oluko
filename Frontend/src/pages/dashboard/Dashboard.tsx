@@ -10,13 +10,14 @@ import {
   Clock,
   Flame,
   ChevronRight,
+  Users,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { StatsCard, RecentActivity } from "@/components/shared";
 import { ConfirmDialog } from "@/components/dialog/ConfirmDialog";
-import { cn, formatDate } from "@/lib/utils/utils";
+import { cn, formatDate, formatCourseTitle } from "@/lib/utils/utils";
 import { authService } from "@/lib/services/authService";
 import { useAuthStore } from "@/lib/store/authStore";
 
@@ -88,6 +89,21 @@ const LEARNING_MODES = [
     iconColor: "text-amber-600",
     comingSoon: false,
   },
+  {
+    id: "teacher",
+    title: "Teacher Mode",
+    description:
+      "Host a live class with your own documents, persona, and a custom cloned voice.",
+    icon: Users,
+    href: "/teach-me/teacher-setup",
+    buttonText: "Class Setup",
+    gradient: "from-rose-500/10 to-rose-600/10",
+    hoverBorder: "hover:border-rose-200",
+    iconBg:
+      "from-rose-50 to-rose-100 dark:from-rose-900/20 dark:to-rose-600/20",
+    iconColor: "text-rose-600",
+    comingSoon: false,
+  },
 ];
 
 const containerVariants = {
@@ -111,10 +127,12 @@ export default function Dashboard() {
   const [comingSoonFeature, setComingSoonFeature] = useState("");
 
   const { data: classes = [], isLoading: loading } = useRecentClasses();
+  // Filter out failed courses — they should never be shown to the user
+  const visibleClasses = classes.filter((cls: any) => cls.status !== 'FAILED');
 
-  const recentActivity = classes.map((cls: any) => ({
+  const recentActivity = visibleClasses.map((cls: any) => ({
     id: cls.id.toString(),
-    title: cls.title,
+    title: formatCourseTitle(cls.title),
     type: (cls.learningMode === "VIDEO"
       ? "Video"
       : cls.learningMode === "DOCUMENT"

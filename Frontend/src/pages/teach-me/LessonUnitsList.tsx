@@ -12,7 +12,12 @@ export function LessonUnitsList() {
   const [searchParams] = useSearchParams();
   const [isNavigating, setIsNavigating] = useState(false);
   const isConcentrationMode = searchParams.get("mode") === "concentration";
+  const isTeacher = searchParams.get("isTeacher") === "true";
 
+  const paramClassId = searchParams.get("classId");
+  if (paramClassId) {
+    localStorage.setItem("currentCourseId", paramClassId);
+  }
   const storedCourseId = localStorage.getItem("currentCourseId");
   const courseId = storedCourseId || null;
 
@@ -43,12 +48,12 @@ export function LessonUnitsList() {
     })).sort((a, b) => a.order - b.order);
   }
 
-  const highestCompletedOrder = progress?.highestCompletedOrder ?? 0;
+  const highestCompletedOrder = isTeacher ? 9999 : (progress?.highestCompletedOrder ?? 0);
 
   const handleUnitClick = (unit: UnifiedUnit) => {
     if (isNavigating) return;
 
-    const isLocked = unit.order > highestCompletedOrder + 1;
+    const isLocked = !isTeacher && unit.order > highestCompletedOrder + 1;
     if (isLocked) return;
 
     setIsNavigating(true);
@@ -61,8 +66,8 @@ export function LessonUnitsList() {
       return;
     }
 
-    // Navigate directly to lesson session with the lessonId
-    navigate(`/teach-me/session/${unit.id}`, {
+    // Navigate directly to lesson session with the lessonId and role query param
+    navigate(`/teach-me/session/${unit.id}?isTeacher=${isTeacher}`, {
       replace: true,
       state: { lessonId: unit.id, unit },
     });

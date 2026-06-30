@@ -10,6 +10,8 @@ import {
   FileText,
   Upload,
   Loader2,
+  Users,
+  Copy,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -20,6 +22,7 @@ import { Course } from "@/lib/types";
 import { useClasses } from "@/lib/hooks/useClasses";
 import { useCourseGenerationStore } from "@/lib/store/courseGenerationStore";
 import { useToastStore } from "@/lib/store/toastStore";
+import { formatCourseTitle } from "@/lib/utils/utils";
 
 interface CreationDialogProps {
   onClose: () => void;
@@ -93,7 +96,7 @@ const CreationDialog = ({ onClose, onNavigate }: CreationDialogProps) => (
           onClick={() => onNavigate("/teach-me/video-setup")}
           className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-purple-500/50 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-all text-left cursor-pointer"
         >
-          <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-blue-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
             <Upload className="w-6 h-6" />
           </div>
           <div>
@@ -102,6 +105,23 @@ const CreationDialog = ({ onClose, onNavigate }: CreationDialogProps) => (
             </h3>
             <p className="text-sm text-slate-500">
               Upload a video file to create interactive lessons.
+            </p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onNavigate("/teach-me/teacher-setup")}
+          className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-rose-500/50 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-all text-left cursor-pointer"
+        >
+          <div className="w-12 h-12 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-rose-600 transition-colors">
+              Teacher Mode
+            </h3>
+            <p className="text-sm text-slate-500">
+              Host a live class with your voice clone and customized teaching persona.
             </p>
           </div>
         </button>
@@ -115,6 +135,8 @@ export default function Classes() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { data: classes = [], isLoading: loading } = useClasses();
+  // Filter out failed courses — they should never be shown to the user
+  const visibleClasses = classes.filter((c: Course) => c.status !== 'FAILED');
   const [showBanner, setShowBanner] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const generatingCourses = useCourseGenerationStore((s) => s.generatingCourses);
@@ -176,13 +198,13 @@ export default function Classes() {
             <p className="text-gray-500 dark:text-gray-400 mt-1">
               Track your enrolled courses and progress
               <span className="ml-2 text-xs font-medium">
-                ({classes.length}/10)
+                ({visibleClasses.length}/10)
               </span>
             </p>
           </div>
           <Button
             onClick={() => {
-              if (classes.length + generatingCourses.length >= 10) {
+              if (visibleClasses.length + generatingCourses.length >= 10) {
                 useToastStore.getState().addToast("You've reached the maximum of 10 courses.", "warning");
                 return;
               }
@@ -201,7 +223,7 @@ export default function Classes() {
               Loading your classes...
             </p>
           </div>
-        ) : classes.length > 0 || generatingCourses.length > 0 ? (
+        ) : visibleClasses.length > 0 || generatingCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Shimmer cards for courses being generated */}
             {generatingCourses.map((gc) => (
@@ -242,15 +264,30 @@ export default function Classes() {
               </motion.div>
             ))}
 
-            {classes.map((course: Course, i: number) => {
+            {visibleClasses.map((course: Course, i: number) => {
               const isNew = newCourseId && String(course.id) === newCourseId;
+              const isTeacherClass = course.title && course.title.startsWith("TEACHER_CLASS::");
 
               const ModeIcon =
-                course.learningMode === "VIDEO"
-                  ? Upload
-                  : course.learningMode === "DOCUMENT"
-                    ? FileText
-                    : BookOpen;
+                isTeacherClass
+                  ? Users
+                  : course.learningMode === "VIDEO"
+                    ? Upload
+                    : course.learningMode === "DOCUMENT"
+                      ? FileText
+                      : BookOpen;
+
+              const handleCardClick = (e: React.MouseEvent) => {
+                if (course.status !== 'READY') {
+                  e.preventDefault();
+                  return;
+                }
+                localStorage.setItem("currentCourseId", course.id.toString());
+                if (isTeacherClass) {
+                  e.preventDefault();
+                  navigate(`/teach-me/class/units?classId=${course.id}&isTeacher=true`);
+                }
+              };
 
               return (
                 <motion.div
@@ -260,15 +297,9 @@ export default function Classes() {
                   transition={{ delay: i * 0.1 }}
                 >
                   <Link
-                    to={course.status === 'READY' ? "/teach-me/class/units" : "#"}
+                    to={isTeacherClass ? `/teach-me/class/units?classId=${course.id}&isTeacher=true` : (course.status === 'READY' ? "/teach-me/class/units" : "#")}
                     className={`block group ${course.status !== 'READY' ? 'cursor-not-allowed opacity-80' : ''}`}
-                    onClick={(e) => {
-                      if (course.status !== 'READY') {
-                        e.preventDefault();
-                        return;
-                      }
-                      localStorage.setItem("currentCourseId", course.id.toString());
-                    }}
+                    onClick={handleCardClick}
                   >
                     <Card
                       variant="interactive"
@@ -281,11 +312,16 @@ export default function Classes() {
 
                       <div className="flex items-center justify-between mb-3 relative z-10">
                         <h3 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-1 pr-4">
-                          {course.title}
+                          {formatCourseTitle(course.title)}
                         </h3>
                         {isNew && (
                           <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 shrink-0">
                             NEW
+                          </span>
+                        )}
+                        {isTeacherClass && (
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
+                            TEACHER
                           </span>
                         )}
                       </div>
@@ -301,18 +337,43 @@ export default function Classes() {
                         </span>
                         <span>•</span>
                         <span className="uppercase font-bold tracking-wider text-xs">
-                          {course.learningMode}
+                          {isTeacherClass ? "TEACHER CLASS" : course.learningMode}
                         </span>
                         <span>•</span>
                         <span>{course.targetLanguage}</span>
                       </div>
 
-                      <Button 
-                        className="w-full relative z-10"
-                        disabled={course.status !== 'READY'}
-                      >
-                        <Play className="w-4 h-4 fill-current" /> Start Learning
-                      </Button>
+                      {isTeacherClass && course.status === 'READY' ? (
+                        <div className="flex flex-col gap-2 relative z-20" onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            className="w-full bg-rose-600 hover:bg-rose-700 text-white"
+                            onClick={() => {
+                              localStorage.setItem("currentCourseId", course.id.toString());
+                              navigate(`/teach-me/class/units?classId=${course.id}&isTeacher=true`);
+                            }}
+                          >
+                            <Users className="w-4 h-4 mr-2" /> Host Class
+                          </Button>
+                          <Button 
+                            variant="secondary"
+                            className="w-full border border-slate-200 dark:border-slate-800"
+                            onClick={() => {
+                              const inviteLink = `${window.location.origin}/teach-me/class/units?classId=${course.id}`;
+                              navigator.clipboard.writeText(inviteLink);
+                              useToastStore.getState().addToast("Student invite link copied to clipboard!", "success");
+                            }}
+                          >
+                            <Copy className="w-4 h-4 mr-2" /> Copy Invite Link
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          className="w-full relative z-10"
+                          disabled={course.status !== 'READY'}
+                        >
+                          <Play className="w-4 h-4 fill-current" /> Start Learning
+                        </Button>
+                      )}
                     </Card>
                   </Link>
                 </motion.div>

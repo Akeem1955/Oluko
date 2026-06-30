@@ -11,8 +11,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-import software.amazon.awssdk.services.bedrockruntime.model.*;
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Schema;
+import java.util.Map;
+
+import static com.google.genai.types.Type.Known.OBJECT;
+import static com.google.genai.types.Type.Known.STRING;
+import static com.google.genai.types.Type.Known.INTEGER;
+import static com.google.genai.types.Type.Known.ARRAY;
 
 import java.util.Arrays;
 import java.util.List;
@@ -22,19 +30,19 @@ import java.util.stream.Collectors;
 @Service
 public class StudyAnalyticsService {
 
-    private static final String NOVA_PRO_MODEL_ID = "us.amazon.nova-pro-v1:0";
+    private static final String MODEL_ID = "gemini-3.5-flash";
 
     private final StudyAnalyticsRepository studyAnalyticsRepository;
-    private final BedrockRuntimeClient bedrockClient;
+    private final Client geminiClient;
     private final ObjectMapper objectMapper;
 
     public StudyAnalyticsService(
             StudyAnalyticsRepository studyAnalyticsRepository,
-            BedrockRuntimeClient bedrockClient,
+            Client geminiClient,
             ObjectMapper objectMapper
     ) {
         this.studyAnalyticsRepository = studyAnalyticsRepository;
-        this.bedrockClient = bedrockClient;
+        this.geminiClient = geminiClient;
         this.objectMapper = objectMapper;
     }
 
@@ -119,8 +127,8 @@ public class StudyAnalyticsService {
         return AnalyticsType.LESSON;
     }
 
-    @Retry(name = "bedrockApi")
-    @CircuitBreaker(name = "bedrockApi")
+    @Retry(name = "geminiApi")
+    @CircuitBreaker(name = "geminiApi")
     protected AnalyticsEvaluation evaluateTranscript(Lesson lesson, String transcript, AnalyticsType analyticsType) {
         try {
             String prompt = String.format("""
@@ -133,32 +141,36 @@ public class StudyAnalyticsService {
                 SESSION TRANSCRIPT:
                 %s
 
-                Return ONLY valid JSON with this schema:
-                {
-                  "masteryScore": 0-100,
-                  "clarityScore": 0-100,
-                  "retentionScore": 0-100,
-                  "quizAccuracy": 0-100,
-                  "strengths": ["short bullet", "..."],
-                  "weakAreas": ["short bullet", "..."],
-                  "recommendation": "one concise next-step recommendation"
-                }
-
+                Decide the student's mastery score, clarity score, retention score, quiz accuracy score, strengths, weak areas, and next-step recommendation.
                 If SESSION TYPE is LESSON and quizAccuracy is not applicable, set quizAccuracy to 0.
                 """, analyticsType.name(), lesson.getTitle(), lesson.getObjective(), transcript);
 
-            Message message = Message.builder()
-                    .role(ConversationRole.USER)
-                    .content(ContentBlock.fromText(prompt))
+            Schema responseSchema = Schema.builder()
+                    .type(OBJECT)
+                    .properties(Map.of(
+                            "masteryScore", Schema.builder().type(INTEGER).build(),
+                            "clarityScore", Schema.builder().type(INTEGER).build(),
+                            "retentionScore", Schema.builder().type(INTEGER).build(),
+                            "quizAccuracy", Schema.builder().type(INTEGER).build(),
+                            "strengths", Schema.builder().type(ARRAY).items(Schema.builder().type(STRING).build()).build(),
+                            "weakAreas", Schema.builder().type(ARRAY).items(Schema.builder().type(STRING).build()).build(),
+                            "recommendation", Schema.builder().type(STRING).build()
+                    ))
+                    .required("masteryScore", "clarityScore", "retentionScore", "quizAccuracy", "strengths", "weakAreas", "recommendation")
                     .build();
 
-            ConverseRequest request = ConverseRequest.builder()
-                    .modelId(NOVA_PRO_MODEL_ID)
-                    .messages(message)
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .candidateCount(1)
+                    .responseMimeType("application/json")
+                    .responseSchema(responseSchema)
                     .build();
 
-            ConverseResponse response = bedrockClient.converse(request);
-            String raw = response.output().message().content().get(0).text().trim();
+            GenerateContentResponse response = geminiClient.models.generateContent(
+                    MODEL_ID,
+                    prompt,
+                    config
+            );
+            String raw = response.text().trim();
 
             int jsonStart = raw.indexOf('{');
             int jsonEnd = raw.lastIndexOf('}');

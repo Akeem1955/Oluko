@@ -9,6 +9,29 @@ export function validateYouTubeUrl(url: string): boolean {
   return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/.test(url);
 }
 
+export function formatCourseTitle(title: string): string {
+  if (title && title.startsWith("YOUTUBE_CLASS::")) {
+    try {
+      const query = title.substring("YOUTUBE_CLASS::".length);
+      const params = new URLSearchParams(query);
+      const topic = params.get("topic");
+      return topic ? `${decodeURIComponent(topic)} (YouTube)` : "YouTube Class";
+    } catch (e) {
+      return "YouTube Class";
+    }
+  } else if (title && title.startsWith("TEACHER_CLASS::")) {
+    try {
+      const query = title.substring("TEACHER_CLASS::".length);
+      const params = new URLSearchParams(query);
+      const classTitle = params.get("title");
+      return classTitle ? `${decodeURIComponent(classTitle)} (Live Class)` : "Live Class";
+    } catch (e) {
+      return "Live Class";
+    }
+  }
+  return title;
+}
+
 export function formatDate(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();

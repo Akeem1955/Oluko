@@ -48,7 +48,10 @@ public class LiveKitController {
     }
 
     @GetMapping("/token")
-    public ResponseEntity<Map<String, Object>> generateToken(@RequestParam UUID lessonId) {
+    public ResponseEntity<Map<String, Object>> generateToken(
+            @RequestParam UUID lessonId,
+            @RequestParam(required = false, defaultValue = "false") boolean isTeacher
+    ) {
         // 1. Get the current logged-in user
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -56,21 +59,25 @@ public class LiveKitController {
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new NeuronFlowException("Lesson not found", HttpStatus.NOT_FOUND));
 
-        courseProgressService.ensureCourseOwnership(userEmail, lesson.getCourse());
+        boolean isTeacherClass = lesson.getCourse().getTitle() != null && lesson.getCourse().getTitle().startsWith("TEACHER_CLASS::");
 
-        if (!courseProgressService.isLessonUnlocked(userEmail, lesson)) {
-            throw new NeuronFlowException(
-                "Lesson is locked. Please complete previous lessons first.",
-                HttpStatus.FORBIDDEN
-            );
+        if (!isTeacherClass) {
+            courseProgressService.ensureCourseOwnership(userEmail, lesson.getCourse());
+
+            if (!courseProgressService.isLessonUnlocked(userEmail, lesson)) {
+                throw new NeuronFlowException(
+                    "Lesson is locked. Please complete previous lessons first.",
+                    HttpStatus.FORBIDDEN
+                );
+            }
         }
 
         // The room name will be the Lesson ID so the Python agent knows exactly which room to join
         String roomName = lesson.getId().toString();
         LessonResumeState resumeState = lessonResumeService.getByLessonId(lesson.getId()).orElse(null);
 
-        // We use the user's email as their unique participant identity
-        String participantIdentity = userEmail;
+        // We use the user's email as their unique participant identity (prefixed for teachers)
+        String participantIdentity = isTeacher ? "teacher_" + userEmail : userEmail;
 
         try {
             // 3. Generate the Secure LiveKit Access Token

@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "aiohttp>=3.13.3",
+    "aiohttp>=3.11.0",
     "livekit-agents>=1.4.4",
-    "livekit-plugins-aws[realtime]>=1.4.4",
+    "livekit-plugins-deepgram>=1.6.3",
+    "livekit-plugins-elevenlabs>=1.5.17",
+    "livekit-plugins-google>=1.4.4",
     "livekit-plugins-silero>=1.4.4",
     "python-dotenv>=1.2.2",
 ]

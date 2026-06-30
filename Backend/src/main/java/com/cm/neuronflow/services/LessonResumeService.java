@@ -5,31 +5,40 @@ import com.cm.neuronflow.internal.domain.LessonResumeState;
 import com.cm.neuronflow.internal.repository.LessonResumeStateRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
+import com.google.genai.Client;
+import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.GenerateContentResponse;
+import com.google.genai.types.Part;
+import com.google.genai.types.Schema;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
-import software.amazon.awssdk.services.bedrockruntime.model.*;
 
+import java.util.Map;
 import java.util.Optional;
 
+import static com.google.genai.types.Type.Known.OBJECT;
+import static com.google.genai.types.Type.Known.STRING;
+import static com.google.genai.types.Type.Known.INTEGER;
+import static com.google.genai.types.Type.Known.BOOLEAN;
+
+@Slf4j
 @Service
 public class LessonResumeService {
 
-    private static final String NOVA_PRO_MODEL_ID = "us.amazon.nova-pro-v1:0";
+    private static final String MODEL_ID = "gemini-3.5-flash";
 
     private final LessonResumeStateRepository lessonResumeStateRepository;
-    private final BedrockRuntimeClient bedrockClient;
+    private final Client geminiClient;
     private final ObjectMapper objectMapper;
 
     public LessonResumeService(
             LessonResumeStateRepository lessonResumeStateRepository,
-            BedrockRuntimeClient bedrockClient,
+            Client geminiClient,
             ObjectMapper objectMapper
     ) {
         this.lessonResumeStateRepository = lessonResumeStateRepository;
-        this.bedrockClient = bedrockClient;
+        this.geminiClient = geminiClient;
         this.objectMapper = objectMapper;
     }
 
@@ -78,9 +87,8 @@ public class LessonResumeService {
         return lessonResumeStateRepository.save(state);
     }
 
-    @Retry(name = "bedrockApi")
-    @CircuitBreaker(name = "bedrockApi")
     protected ResumeEvaluation evaluateTranscript(Lesson lesson, String transcript) {
+        log.info("Evaluating lesson progress via Gemini 3.5 Flash for Lesson ID: {}", lesson.getId());
         try {
             String prompt = String.format("""
                 You are an expert lesson progress evaluator.
@@ -95,26 +103,30 @@ public class LessonResumeService {
                 %s
                 
                 Decide how much of the lesson objective has been taught.
-                Return ONLY JSON with this exact schema:
-                {
-                  "completionPercent": number between 0 and 100,
-                  "resumeSummary": "short summary of what has been covered and what to continue with next",
-                  "completed": true|false
-                }
                 """, lesson.getTitle(), lesson.getObjective(), transcript);
 
-            Message message = Message.builder()
-                    .role(ConversationRole.USER)
-                    .content(ContentBlock.fromText(prompt))
+            Schema responseSchema = Schema.builder()
+                    .type(OBJECT)
+                    .properties(Map.of(
+                            "completionPercent", Schema.builder().type(INTEGER).build(),
+                            "resumeSummary", Schema.builder().type(STRING).build(),
+                            "completed", Schema.builder().type(BOOLEAN).build()
+                    ))
+                    .required("completionPercent", "resumeSummary", "completed")
                     .build();
 
-            ConverseRequest request = ConverseRequest.builder()
-                    .modelId(NOVA_PRO_MODEL_ID)
-                    .messages(message)
+            GenerateContentConfig config = GenerateContentConfig.builder()
+                    .candidateCount(1)
+                    .responseMimeType("application/json")
+                    .responseSchema(responseSchema)
                     .build();
 
-            ConverseResponse response = bedrockClient.converse(request);
-            String raw = response.output().message().content().get(0).text().trim();
+            GenerateContentResponse response = geminiClient.models.generateContent(
+                    MODEL_ID,
+                    prompt,
+                    config
+                );
+            String raw = response.text().trim();
 
             int jsonStart = raw.indexOf('{');
             int jsonEnd = raw.lastIndexOf('}');
@@ -131,6 +143,7 @@ public class LessonResumeService {
 
             return new ResumeEvaluation(percent, summary, completed);
         } catch (Exception e) {
+            log.error("Failed to evaluate transcript using Gemini", e);
             return new ResumeEvaluation(
                     15,
                     "Session ended before completion. Continue from the latest discussed concepts.",

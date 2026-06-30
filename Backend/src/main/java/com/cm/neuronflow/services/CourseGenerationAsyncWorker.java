@@ -23,16 +23,16 @@ public class CourseGenerationAsyncWorker {
 
     private final CourseRepository courseRepository;
     private final DocumentExtractionService extractionService;
-    private final NovaSyllabusGenerator novaSyllabusGenerator;
+    private final GeminiSyllabusGenerator geminiSyllabusGenerator;
     private final ObjectMapper objectMapper;
 
     public CourseGenerationAsyncWorker(CourseRepository courseRepository,
                                        DocumentExtractionService extractionService,
-                                       NovaSyllabusGenerator novaSyllabusGenerator,
+                                       GeminiSyllabusGenerator geminiSyllabusGenerator,
                                        ObjectMapper objectMapper) {
         this.courseRepository = courseRepository;
         this.extractionService = extractionService;
-        this.novaSyllabusGenerator = novaSyllabusGenerator;
+        this.geminiSyllabusGenerator = geminiSyllabusGenerator;
         this.objectMapper = objectMapper;
     }
 
@@ -49,20 +49,56 @@ public class CourseGenerationAsyncWorker {
             String contextMaterial = "";
 
             // 1. Digestion Phase
-            if (course.getLearningMode() == LearningMode.DOCUMENT && fileBytes != null) {
+            if (course.getTitle() != null && course.getTitle().startsWith("TEACHER_CLASS::")) {
+                String titleString = course.getTitle();
+                String extractedTitle = "Teacher Class";
+                String query = titleString.substring("TEACHER_CLASS::".length());
+                String[] params = query.split("&");
+                for (String param : params) {
+                    if (param.startsWith("title=")) {
+                        try {
+                            extractedTitle = java.net.URLDecoder.decode(param.substring(6), java.nio.charset.StandardCharsets.UTF_8.name());
+                        } catch (Exception e) {
+                            extractedTitle = param.substring(6);
+                        }
+                    }
+                }
+                topic = extractedTitle;
+                if (fileBytes != null && fileBytes.length > 0) {
+                    contextMaterial = extractionService.extractTextFromBytes(fileBytes);
+                } else {
+                    contextMaterial = geminiSyllabusGenerator.generateTopicContext(extractedTitle, course.getTargetLanguage());
+                }
+            } else if (course.getTitle() != null && course.getTitle().startsWith("YOUTUBE_CLASS::")) {
+                String titleString = course.getTitle();
+                String extractedTopic = "YouTube Video Course";
+                String query = titleString.substring("YOUTUBE_CLASS::".length());
+                String[] params = query.split("&");
+                for (String param : params) {
+                    if (param.startsWith("topic=")) {
+                        try {
+                            extractedTopic = java.net.URLDecoder.decode(param.substring(6), java.nio.charset.StandardCharsets.UTF_8.name());
+                        } catch (Exception e) {
+                            extractedTopic = param.substring(6);
+                        }
+                    }
+                }
+                contextMaterial = geminiSyllabusGenerator.generateTopicContext(extractedTopic, course.getTargetLanguage());
+                topic = extractedTopic;
+            } else if (course.getLearningMode() == LearningMode.DOCUMENT && fileBytes != null) {
                 contextMaterial = extractionService.extractTextFromBytes(fileBytes);
             } else if (course.getLearningMode() == LearningMode.VIDEO && fileBytes != null) {
-                contextMaterial = novaSyllabusGenerator.analyzeVideoContent(fileBytes, course.getTargetLanguage());
+                contextMaterial = geminiSyllabusGenerator.analyzeVideoContent(fileBytes, course.getTargetLanguage());
             } else if (course.getLearningMode() == LearningMode.TOPIC) {
-                contextMaterial = novaSyllabusGenerator.generateTopicContext(topic, course.getTargetLanguage());
+                contextMaterial = geminiSyllabusGenerator.generateTopicContext(topic, course.getTargetLanguage());
             }
 
             // Save the grounded context for Sonic to reference later
             course.setSourceMaterial(contextMaterial);
 
-            // 2. Syllabus Generation (Nova 2 Lite)
-            log.info("Calling Amazon Nova Lite for syllabus generation. Topic: {}", topic);
-            String jsonSyllabus = novaSyllabusGenerator.generateSyllabus(topic, contextMaterial, course.getTargetLanguage());
+            // 2. Syllabus Generation (Gemini 3.5 Flash)
+            log.info("Calling Gemini 3.5 Flash for syllabus generation. Topic: {}", topic);
+            String jsonSyllabus = geminiSyllabusGenerator.generateSyllabus(topic, contextMaterial, course.getTargetLanguage());
 
             // Clean markdown blocks if Nova accidentally includes them
             if (jsonSyllabus.startsWith("```json")) {

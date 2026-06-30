@@ -1,0 +1,60 @@
+# ==========================================
+# DATABASE & SERVICE ORCHESTRATION
+# ==========================================
+spring.docker.compose.enabled=true
+
+# Connect to the exposed ports from docker-compose.yml (5433:5432, 6380:6379)
+spring.datasource.url=jdbc:postgresql://localhost:5433/mydatabase
+spring.datasource.username=myuser
+spring.datasource.password=secret
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+
+spring.data.redis.host=localhost
+spring.data.redis.port=6380
+
+# ==========================================
+# APPLICATION CONFIGURATION
+# ==========================================
+spring.application.name=NeuronFlow
+api.base=/NeuronFlow/api/v1
+jwt.issuer=NeuronFlow
+
+# JWT (Set a secure base64 secret key)
+jwt.secret=YOUR_JWT_SECRET_KEY_BASE64_ENCODED
+
+# Email Authentication (Gmail SMTP / OTP Setup)
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.starttls.enable=true
+spring.mail.port=587
+spring.mail.host=smtp.gmail.com
+spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.username=YOUR_GMAIL_USERNAME@gmail.com
+spring.mail.password=YOUR_GMAIL_APP_PASSWORD
+
+# ==========================================
+# GOOGLE GEMINI CONFIGURATION
+# ==========================================
+gemini.api.key=${GEMINI_API_KEY:YOUR_GEMINI_API_KEY}
+
+# ==========================================
+# LIVEKIT CONFIGURATION
+# ==========================================
+# Obtain these from your LiveKit Cloud dashboard
+livekit.api.key=YOUR_LIVEKIT_API_KEY
+livekit.api.secret=YOUR_LIVEKIT_API_SECRET
+livekit.url=YOUR_LIVEKIT_URL
+
+# ==========================================
+# MULTIPART FILE UPLOAD LIMITS
+# ==========================================
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+
+# ==========================================
+# ELEVENLABS CONFIGURATION
+# ==========================================
+elevenlabs.api.key=${ELEVEN_API_KEY:YOUR_ELEVENLABS_API_KEY}

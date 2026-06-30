@@ -49,6 +49,12 @@ public class CourseGenerationService {
             } catch (IOException e) {
                 throw new NeuronFlowException("Failed to read the uploaded file: " + e.getMessage(), HttpStatus.BAD_REQUEST);
             }
+        } else if (learningMode == LearningMode.VIDEO && topic != null && topic.startsWith("YOUTUBE_CLASS::")) {
+            // Bypass file requirement for YouTube classes
+            title = topic;
+        } else if (learningMode == LearningMode.DOCUMENT && topic != null && topic.startsWith("TEACHER_CLASS::")) {
+            // Bypass file requirement for Teacher classes if they don't upload a PDF
+            title = topic;
         } else if (learningMode == LearningMode.DOCUMENT || learningMode == LearningMode.VIDEO) {
             throw new NeuronFlowException("A file must be provided for " + learningMode + " mode.", HttpStatus.BAD_REQUEST);
         } else if (title == null || title.isBlank()) {

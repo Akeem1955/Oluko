@@ -19,6 +19,7 @@ const VideoSelection = lazy(
   () => import("@/pages/teach-me/VideoSelection"),
 );
 const PDFSelection = lazy(() => import("@/pages/teach-me/PDFSelection"));
+const TeacherSetup = lazy(() => import("@/pages/teach-me/TeacherSetup"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 export interface AppRoute {
@@ -121,6 +122,12 @@ export const protectedRoutes: AppRoute[] = [
     element: <PDFSelection />,
     requiresAuth: true,
     title: "New PDF Class",
+  },
+  {
+    path: "/teach-me/teacher-setup",
+    element: <TeacherSetup />,
+    requiresAuth: true,
+    title: "New Teacher Class",
   },
   {
     path: "/classes",
